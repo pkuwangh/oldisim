@@ -68,8 +68,13 @@ localenv.Command(obj_mapper(['PointerChaseTestCmdline.cc', 'PointerChaseTestCmdl
 localenv.Program(target=builddir+'/PointerChaseTest',
                  source=obj_mapper(['PointerChaseTest.cc', 'PointerChase.cc', 'PointerChaseTestCmdline.cc']))
 
-icache_buster_num_splits = 24
-localenv.Command(obj_mapper(['ICacheBuster.part%d.cc' % i for i in xrange(icache_buster_num_splits)] + ['ICacheBuster.cc', 'ICacheBuster.h']), 'gen_icache_buster.py', 'python $SOURCE --num_methods 100000 --num_splits %d --output_dir %s' % (icache_buster_num_splits, Dir(builddir).abspath))
+localenv.Command(obj_mapper(['TriadStreamTestCmdline.cc', 'TriadStreamTestCmdline.h']), 'TriadStreamTestCmdline.ggo', 'gengetopt < $SOURCE --file-name='+Dir(builddir).abspath+'/TriadStreamTestCmdline')
+localenv.Program(target=builddir+'/TriadStreamTest',
+                 source=obj_mapper(['TriadStreamTest.cc', 'TriadStream.cc', 'TriadStreamTestCmdline.cc']))
+
+
+icache_buster_num_splits = 240
+localenv.Command(obj_mapper(['ICacheBuster.part%d.cc' % i for i in xrange(icache_buster_num_splits)] + ['ICacheBuster.cc', 'ICacheBuster.h']), 'gen_icache_buster.py', 'python $SOURCE --num_methods 1000000 --num_splits %d --output_dir %s' % (icache_buster_num_splits, Dir(builddir).abspath))
 localenv.Command(obj_mapper(['ICacheBusterTestCmdline.cc', 'ICacheBusterTestCmdline.h']), 'ICacheBusterTestCmdline.ggo', 'gengetopt < $SOURCE --file-name='+Dir(builddir).abspath+'/ICacheBusterTestCmdline')
 icache_buster_lib_src = obj_mapper(['ICacheBuster.cc']+['ICacheBuster.part%d.cc' % i for i in xrange(icache_buster_num_splits)])
 localenv.Program(target=builddir+'/ICacheBusterTest',
@@ -79,11 +84,11 @@ localenv.Program(target=builddir+'/NopLoop',
                  source=obj_mapper(['NopLoop.cc']))
 
 localenv.Program(target=builddir+'/LeafKernel',
-                 source=obj_mapper(['LeafKernel.cc', 'PointerChase.cc'])+icache_buster_lib_src)
+                 source=obj_mapper(['LeafKernel.cc', 'TriadStream.cc', 'PointerChase.cc'])+icache_buster_lib_src)
 
 localenv.Command(obj_mapper(['LeafNodeCmdline.cc', 'LeafNodeCmdline.h']), 'LeafNodeCmdline.ggo', 'gengetopt < $SOURCE --file-name='+Dir(builddir).abspath+'/LeafNodeCmdline')
 localenv.Program(target=builddir+'/LeafNode',
-                 source=obj_mapper(['LeafNode.cc', 'PointerChase.cc', 'HistogramRandomSampler.cc', 'LeafNodeCmdline.cc'])+icache_buster_lib_src)
+                 source=obj_mapper(['LeafNode.cc', 'PointerChase.cc', 'TriadStream.cc', 'HistogramRandomSampler.cc', 'LeafNodeCmdline.cc'])+icache_buster_lib_src)
 
 localenv.Command(obj_mapper(['ParentNodeCmdline.cc', 'ParentNodeCmdline.h']), 'ParentNodeCmdline.ggo', 'gengetopt < $SOURCE --file-name='+Dir(builddir).abspath+'/ParentNodeCmdline')
 localenv.Program(target=builddir+'/ParentNode',

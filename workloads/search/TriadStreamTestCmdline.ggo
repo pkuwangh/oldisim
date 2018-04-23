@@ -1,0 +1,12 @@
+
+package "TriadStreamTest"
+version "0.1"
+usage "TriadStreamTest [options]"
+description "Test program for triad streaming"
+
+args "-c cc --show-required -C --default-optional -l"
+
+option "size" - "Number of elements to allocate." int default="1"
+option "iterations" - "Number of iterations to run." int default="10000000"
+option "length" -  "Num" int default="1"
+
