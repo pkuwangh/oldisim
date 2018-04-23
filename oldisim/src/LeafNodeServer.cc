@@ -690,12 +690,12 @@ void LeafNodeServer::Run() {
   }
 
   // Set up the socket to listen on
-  struct sockaddr_in sin;
-  sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = 0;
-  sin.sin_port = htons(impl_->port);
+  struct sockaddr_in6 sin;
+  sin.sin6_family = AF_INET6;
+  sin.sin6_addr = in6addr_any;
+  sin.sin6_port = htons(impl_->port);
 
-  evutil_socket_t listener = socket(AF_INET, SOCK_STREAM, 0);
+  evutil_socket_t listener = socket(AF_INET6, SOCK_STREAM, 0);
   evutil_make_socket_nonblocking(listener);
 
   int one = 1;
@@ -757,7 +757,7 @@ void LeafNodeServer::Run() {
 
     /* Now we tell the evhttp what port to listen on */
     monitor_http_handle = evhttp_bind_socket_with_handle(
-        monitor_http, "0.0.0.0", impl_->monitor_port);
+        monitor_http, "::1", impl_->monitor_port);
     if (!monitor_http_handle) {
       DIE("couldn't bind to port %d. Exiting.\n", impl_->monitor_port);
     }
