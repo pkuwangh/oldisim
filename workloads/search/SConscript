@@ -73,8 +73,8 @@ localenv.Program(target=builddir+'/TriadStreamTest',
                  source=obj_mapper(['TriadStreamTest.cc', 'TriadStream.cc', 'TriadStreamTestCmdline.cc']))
 
 
-icache_buster_num_splits = 24
-localenv.Command(obj_mapper(['ICacheBuster.part%d.cc' % i for i in xrange(icache_buster_num_splits)] + ['ICacheBuster.cc', 'ICacheBuster.h']), 'gen_icache_buster.py', 'python $SOURCE --num_methods 100000 --num_splits %d --output_dir %s' % (icache_buster_num_splits, Dir(builddir).abspath))
+icache_buster_num_splits = 240
+localenv.Command(obj_mapper(['ICacheBuster.part%d.cc' % i for i in xrange(icache_buster_num_splits)] + ['ICacheBuster.cc', 'ICacheBuster.h']), 'gen_icache_buster.py', 'python $SOURCE --num_methods 1000000 --num_splits %d --output_dir %s' % (icache_buster_num_splits, Dir(builddir).abspath))
 localenv.Command(obj_mapper(['ICacheBusterTestCmdline.cc', 'ICacheBusterTestCmdline.h']), 'ICacheBusterTestCmdline.ggo', 'gengetopt < $SOURCE --file-name='+Dir(builddir).abspath+'/ICacheBusterTestCmdline')
 icache_buster_lib_src = obj_mapper(['ICacheBuster.cc']+['ICacheBuster.part%d.cc' % i for i in xrange(icache_buster_num_splits)])
 localenv.Program(target=builddir+'/ICacheBusterTest',
