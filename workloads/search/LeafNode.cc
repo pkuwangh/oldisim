@@ -30,21 +30,25 @@
 #include "LeafNodeCmdline.h"
 #include "RequestTypes.h"
 #include "RandomString.h"
+#include "TriadStream.h"
 
 // Shared configuration flags
 static gengetopt_args_info args;
 
 // Program constants
 const int kPointerChaseSize = 10000000;
-const int kICacheBusterSize = 100000;
-const int kNumNops = 6;
-const int kNumNopIterations = 60;
+const int kICacheBusterSize = 1000000;
+const int kNumNops = 4;
+const int kNumNopIterations = 1000;
 const int kNumIterations = 100000000;
 const int kMaxResponseSize = 8192;
+const int kTriadStreamSize = 500000;
+
 
 struct ThreadData {
   std::unique_ptr<search::PointerChase> pointer_chaser;
   std::unique_ptr<ICacheBuster> icache_buster;
+  std::unique_ptr<search::TriadStream> triad_streamer;
   std::default_random_engine rng;
   std::gamma_distribution<double> latency_distribution;
   std::string random_string;
@@ -59,6 +63,9 @@ void ThreadStartup(oldisim::NodeThread& thread,
 
   // Initialize PointerChaser
   this_thread.icache_buster.reset(new ICacheBuster(kICacheBusterSize));
+
+  // Initialize TriadSreamer
+  this_thread.triad_streamer.reset(new search::TriadStream(kTriadStreamSize));
 
   // Initialize RNG and latency sampler
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -79,19 +86,22 @@ void SearchRequestHandler(oldisim::NodeThread& thread,
   ThreadData& this_thread = thread_data[thread.get_thread_num()];
   search::PointerChase& chaser = *this_thread.pointer_chaser;
   ICacheBuster& buster = *this_thread.icache_buster;
+  search::TriadStream& triad_streamer = *this_thread.triad_streamer;
 
   // Sample distribution for work
   int num_iterations = this_thread.latency_distribution(this_thread.rng);
 
+  triad_streamer.Copy(1);
   // Spin loop of work here
   for (int i = 0; i < num_iterations; i++) {
     buster.RunNextMethod();
-    chaser.Chase(1);
+    chaser.Chase(3);
     for (int j = 0; j < kNumNopIterations; j++) {
       for (int k = 0; k < kNumNops; k++) {
         asm volatile("nop");
       }
     }
+    buster.RunNextMethod();
   }
 
   int response_size = 2048;
