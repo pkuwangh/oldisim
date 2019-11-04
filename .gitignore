@@ -7,3 +7,4 @@
 # Build directories
 /debug
 /release
+/build
