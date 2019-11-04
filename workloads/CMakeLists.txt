@@ -50,7 +50,7 @@ add_custom_target(
 file(GLOB icache_srclist "${CMAKE_CURRENT_BINARY_DIR}/search/ICacheBuster*")
 add_library(icachebuster ${icache_srclist})
 
-target_include_directories(icachebuster PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/)
+target_include_directories(icachebuster PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/ ${JEMALLOC_INCLUDE_DIR})
 target_compile_features(icachebuster PRIVATE cxx_std_11)
 add_dependencies(icachebuster genicache)
 
@@ -63,10 +63,11 @@ add_executable(LeafNode
 
 target_compile_features(LeafNode PRIVATE cxx_std_11)
 target_include_directories(LeafNode
-                           PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/ ${LIBEVENT_INCLUDE_DIR})
+                           PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/
+                                  ${LIBEVENT_INCLUDE_DIR} ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(LeafNode
                       PRIVATE oldisimlib icachebuster leafnodecmdline
-                      PUBLIC Threads::Threads ${LIBEVENT_LIB})
+                      PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
 # Generate getopts for ParentNode
@@ -97,11 +98,13 @@ add_executable(ParentNode
 target_compile_features(ParentNode PRIVATE cxx_std_11)
 target_include_directories(
     ParentNode
-    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/ ${LIBEVENT_INCLUDE_DIR})
+    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/
+           ${LIBEVENT_INCLUDE_DIR}
+           ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(
     ParentNode
     PRIVATE oldisimlib parentnodecmdline
-    PUBLIC Threads::Threads ${LIBEVENT_LIB})
+    PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
 
@@ -133,11 +136,14 @@ add_executable(LoadBalancerNode
 target_compile_features(LoadBalancerNode PRIVATE cxx_std_11)
 target_include_directories(
     LoadBalancerNode
-    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/ ${LIBEVENT_INCLUDE_DIR})
+    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/
+           ${LIBEVENT_INCLUDE_DIR}
+           ${JEMALLOC_INCLUDE_DIR})
+
 target_link_libraries(
     LoadBalancerNode
     PRIVATE oldisimlib LoadBalancernodecmdline
-    PUBLIC Threads::Threads ${LIBEVENT_LIB})
+    PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
 # Generate getops for DriverNode
@@ -168,11 +174,14 @@ add_executable(DriverNode
 target_compile_features(DriverNode PRIVATE cxx_std_11)
 target_include_directories(
     DriverNode
-    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/ ${LIBEVENT_INCLUDE_DIR})
+    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/
+           ${LIBEVENT_INCLUDE_DIR}
+           ${JEMALLOC_INCLUDE_DIR})
+
 target_link_libraries(
     DriverNode
     PRIVATE oldisimlib Drivernodecmdline
-    PUBLIC Threads::Threads ${LIBEVENT_LIB})
+    PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
 # Build LeafKernel binary
@@ -181,7 +190,7 @@ add_executable(LeafKernel
                search/PointerChase.cc)
 target_compile_features(LeafKernel PRIVATE cxx_std_11)
 target_include_directories(LeafKernel
-                            PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/)
+                            PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/search/
+                                   ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(LeafKernel
-                      PRIVATE oldisimlib icachebuster
-                      )
+                      PRIVATE oldisimlib icachebuster ${JEMALLOC_LIB})
