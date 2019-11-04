@@ -54,7 +54,7 @@ SOURCE_TEMPLATE = '''
 ICacheBuster::ICacheBuster(size_t num_methods)
     : methods_({NUM_METHODS}), current_index_(0),
       num_subset_methods_(num_methods) {{
-  assert(num_methods < {NUM_METHODS});
+  assert(num_methods <= {NUM_METHODS});
 {INIT_METHOD_CALLS}
   // make a random permutation over data
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
