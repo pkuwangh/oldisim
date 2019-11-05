@@ -689,25 +689,63 @@ void LeafNodeServer::Run() {
     DIE("Could not ignore SIGPIPE: %s", strerror(errno));
   }
 
+  int status;
+  struct addrinfo *servinfo;
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+  hints.ai_addr = nullptr;
+
+  const char* port = std::to_string(impl_->port).c_str();
+  if ((status = getaddrinfo(nullptr, port, &hints, &servinfo)) != 0) {
+    DIE("getaddrinfo error: %s", gai_strerror(status));
+  }
+
   // Set up the socket to listen on
-  struct sockaddr_in sin;
-  sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = 0;
-  sin.sin_port = htons(impl_->port);
-
-  evutil_socket_t listener = socket(AF_INET, SOCK_STREAM, 0);
-  evutil_make_socket_nonblocking(listener);
-
-  int one = 1;
-  setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-
-  if (bind(listener, (struct sockaddr*)&sin, sizeof(sin)) < 0) {
+  struct addrinfo *rp;
+  int socketfd;
+  for (rp = servinfo; rp != nullptr; rp = servinfo->ai_next) {
+    socketfd = socket(rp->ai_family, rp->ai_socktype, 0);
+    if (socketfd == -1) {
+      continue;
+    }
+    int one = 1;
+    setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    if (bind(socketfd, rp->ai_addr, rp->ai_addrlen) == 0) {
+      break;
+    }
+    close(socketfd);
+  }
+  if (rp == NULL) {
     DIE("bind failed: %s", strerror(errno));
   }
+
+  freeaddrinfo(servinfo);
+
+  evutil_socket_t listener = socketfd;
+  evutil_make_socket_nonblocking(listener);
+
 
   if (listen(listener, 16) < 0) {
     DIE("listen failed: %s", strerror(errno));
   }
+  char ipstr[INET6_ADDRSTRLEN];
+  switch(rp->ai_addr->sa_family) {
+    case AF_INET:
+      inet_ntop(AF_INET, &(((struct sockaddr_in *)rp->ai_addr)->sin_addr),
+                ipstr, INET6_ADDRSTRLEN);
+      break;
+    case AF_INET6:
+      inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)rp->ai_addr)->sin6_addr),
+                ipstr, INET6_ADDRSTRLEN);
+      break;
+    default:
+      strncpy(ipstr, "Unknown AF", INET6_ADDRSTRLEN);
+  }
+  std::cout << "LeafServer listening on " << ipstr << ":" << impl_->port << std::endl;
 
   // Init the thread init barrier
   pthread_barrier_init(&impl_->thread_init_barrier, nullptr,
@@ -757,11 +795,15 @@ void LeafNodeServer::Run() {
 
     /* Now we tell the evhttp what port to listen on */
     monitor_http_handle = evhttp_bind_socket_with_handle(
-        monitor_http, "0.0.0.0", impl_->monitor_port);
+        monitor_http, "::", impl_->monitor_port);
     if (!monitor_http_handle) {
-      DIE("couldn't bind to port %d. Exiting.\n", impl_->monitor_port);
+      monitor_http_handle = evhttp_bind_socket_with_handle(
+          monitor_http, "0.0.0.0", impl_->monitor_port);
+      if (!monitor_http_handle) {
+        DIE("couldn't bind to port %d. Exiting.\n", impl_->monitor_port);
+      }
     }
-
+    std::cout << "Monitor Server listening on port " << impl_->monitor_port << std::endl;
     LeafNodeServerImpl::AddPullStatsTimer(*this);
   }
 
@@ -783,6 +825,7 @@ void LeafNodeServer::Shutdown() {
     event_base_loopbreak(thread->node_thread.impl_->base);
   }
 }
+
 
 /**
  * Set the callback to run after a thread has started up.

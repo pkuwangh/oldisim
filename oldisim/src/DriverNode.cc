@@ -530,9 +530,13 @@ void DriverNode::Run(uint32_t num_threads, bool thread_pinning,
 
     /* Now we tell the evhttp what port to listen on */
     monitor_http_handle = evhttp_bind_socket_with_handle(
-        monitor_http, "0.0.0.0", impl_->monitor_port);
+      monitor_http, "::", impl_->monitor_port);
     if (!monitor_http_handle) {
-      DIE("couldn't bind to port %d. Exiting.\n", impl_->monitor_port);
+      monitor_http_handle = evhttp_bind_socket_with_handle(
+          monitor_http, "0.0.0.0", impl_->monitor_port);
+      if (!monitor_http_handle) {
+        DIE("couldn't bind to port %d. Exiting.\n", impl_->monitor_port);
+      }
     }
 
     DriverNodeImpl::AddPullStatsTimer(*this);
