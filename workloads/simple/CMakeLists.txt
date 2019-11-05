@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.12)
 project(oldisim_simple)
 
 find_program(GENGETOPT_EXECUTABLE gengetopt REQUIRED)
