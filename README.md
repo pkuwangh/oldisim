@@ -8,7 +8,13 @@ OLDI workloads are user-facing workloads that mine massive datasets across many 
 * High fan-out with large distributed state
 * Extremely challenging to perform power management
 
+
 Some examples are web search and social networking.
+
+# Changes
+
+This is version is a fork. This version uses CMake to build the benchmarks, and switches TCMallo for JEMalloc.
+
 
 # Run oldisim in a local cluster
 ## Prerequisites
@@ -16,53 +22,41 @@ Some examples are web search and social networking.
 The following are the required to build oldisim from this repo.
 
 Requirements:
-* SCons compiler
+* CMake Version 3.13 or greater
 * C++11 compatible compiler, e.g., g++ v.4.7.3 or later
 versions.
 * Boost version 1.53 or higher (included).
 * Cereal (included as a submodule).
 
 Install the requirements with:
+
+### Ubuntu
 ```
-$ sudo apt-get install build-essential gengetopt libgoogle-perftools-dev
-libunwind7-dev libevent-dev scons libboost-all-dev
+$ sudo apt-get install build-essential gengetopt libevent-dev libboost-all-dev libjemalloc-dev
+```
+
+### CentOS
+```
+$ sudo yum install boost-devel libevent-devel gengetopt jemalloc-devel ninja-build
 ```
 
 ## Build oldisim
 
 To build oldisim, ensure that all submodules are available (`git
-submodule update --init`) and run `scons` in the root directory of the project.
-
-If you need to create static libraries, put the following in a new file named
-custom.py in the project root:
+submodule update --init`) and run the following the root directory of the project.
 
 ```
-RELEASE=1
-STATICLINK=1
-TCMALLOC=1
-CXX='<PATH_TO_g++>'
-LD='<PATH_TO_LD>'
-AR='<PATH_TO_AR>'
-NM='<PATH_TO_NM>'
-CPPPATH=['/usr/include/', '<PATH_TO_BOOST_FILES>']
-LIBPATH='/usr/lib/'
+$ mkdir build && cd build/
+$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../
+$ ninja -j12
 ```
 
 Note that you don’t need to build the boost library, as the dependency on lock
 free queues does not require a built libboost.
 
-To speedup compilation, scons supports parallel compilation, e.g. `scons
--j12` to compile with 12 threads in parallel. There are two build modes,
-**release** and **debug**. The default build mode is **release**.
-**debug** mode may be specified by passing `RELEASE=0` to `scons`, e.g. `scons
-RELEASE=0`.
-The output of the builds will be put into `<BUILD_MODE>/`
+To speedup compilation, ninja supports parallel compilation, e.g. `ninja
+-j12` to compile with 12 threads in parallel.
 
-There are several output directories in the build, corresponding to the
-different parts of oldisim.
-
-+ *BUILD_MODE*/oldisim contains the oldisim framework libraries
-+ *BUILD_MODE*/workloads contains the binaries of the workloads built
 
 ## Run oldisim: search on the cluster
 
@@ -146,14 +140,14 @@ $ ./pkb.py --cloud=Azure --machine_type=ExtraSmall --benchmarks=oldisim --oldisi
 # oldisim output
 Below is a sample output of oldisim running with 4 leaves.
 ```
-Scaling efficiency of 1 leaves 1.0 
-Scaling efficiency of 2 leaves 0.92 
-Scaling efficiency of 3 leaves 0.89 
-Scaling efficiency of 4 leaves 0.88 
+Scaling efficiency of 1 leaves 1.0
+Scaling efficiency of 2 leaves 0.92
+Scaling efficiency of 3 leaves 0.89
+Scaling efficiency of 4 leaves 0.88
 ```
-The scaling efficiency of N leaves is calculated by dividing its QPS by the QPS with one leaf node. It measures the efficiency of scaling out to multiple nodes (or sharding). Sharding happens when we need to handle large data volumes (e.g. data cannot fit in one machine) and high query loads. It also helps to avoid a single point of failure.  
+The scaling efficiency of N leaves is calculated by dividing its QPS by the QPS with one leaf node. It measures the efficiency of scaling out to multiple nodes (or sharding). Sharding happens when we need to handle large data volumes (e.g. data cannot fit in one machine) and high query loads. It also helps to avoid a single point of failure.
 
-Due to performance variation among machines, QPS with sharding is usually limited by the slowest node. This will cause a QPS loss comparing to the single node case. The goal of oldisim is to provide an accurate measurement for the scaling efficiency of sharding. 
+Due to performance variation among machines, QPS with sharding is usually limited by the slowest node. This will cause a QPS loss comparing to the single node case. The goal of oldisim is to provide an accurate measurement for the scaling efficiency of sharding.
 
 # License
 

@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.13)
-project(oldisim CXX)
+project(oldisim C CXX)
+
+set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
 
 
-
-find_library(JEMALLOC_LIB NAMES jemalloc)
-find_path(JEMALLOC_INCLUDE_DIR NAMES jemalloc/jemalloc.h)
+find_library(JEMALLOC_LIB NAMES jemalloc REQUIRED)
+find_path(JEMALLOC_INCLUDE_DIR NAMES jemalloc/jemalloc.h REQUIRED)
 if (JEMALLOC_INCLUDE_DIR AND JEMALLOC_LIB)
     include_directories(${JEMALLOC_INCLUDE_DIR})
 
@@ -38,6 +40,7 @@ endif()
 
 find_package(Threads REQUIRED)
 find_package(LibEvent REQUIRED)
+
 
 
 add_subdirectory(third_party)
