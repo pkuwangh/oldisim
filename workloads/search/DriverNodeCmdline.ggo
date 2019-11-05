@@ -28,6 +28,6 @@ option "connections" - "Connections to establish per thread." int default="1"
 option "depth" - "Maximum depth to pipeline requests per thread." int default="1"
 option "qps" - "Rate to send requests at. 0 means send as fast as it can." float default="0"
 
-option "monitor_port" - "Port to run monitoring server on." int default="8888"
+option "monitor_port" - "Port to run monitoring server on." int default="7777"
 
 option "affinity" - "Set distinct CPU affinity for threads, round-robin"
