@@ -40,15 +40,15 @@ using apache::thrift::transport::TMemoryBuffer;
 // Shared configuration flags
 static gengetopt_args_info args;
 
-static const uint32_t kDefaultBufferSize = 64 << 10;
-static const int kMaxResponseSize = 8192;
+static const int kMaxResponseSize = 1 << 12;
+const int kNumNops = 6;
+const int kNumNopIterations = 60;
 
 struct ThreadData {
   std::default_random_engine rng;
   std::gamma_distribution<double> latency_distribution;
   std::string random_string;
 };
-
 
 void ThreadStartup(oldisim::NodeThread &thread,
                    std::vector<ThreadData> &thread_data) {
@@ -64,22 +64,32 @@ void ThreadStartup(oldisim::NodeThread &thread,
   this_thread.random_string = RandomString(kMaxResponseSize);
 }
 
-void PageRankRequestHandler(oldisim::NodeThread &thread, oldisim::QueryContext &context,
-std::vector<ThreadData> &thread_data) {
+void PageRankRequestHandler(oldisim::NodeThread &thread,
+                            oldisim::QueryContext &context,
+                            std::vector<ThreadData> &thread_data) {
   auto &this_thread = thread_data[thread.get_thread_num()];
   int num_iterations = this_thread.latency_distribution(this_thread.rng);
   for (int i = 0; i < num_iterations; i++) {
-
+    for (int j = 0; j < kNumNopIterations; j++) {
+      for (int k = 0; k < kNumNops; k++) {
+        asm volatile("nop");
+      }
+    }
   }
   std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
   std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
+
+  // Serialize random string as Thrift
   ranking::Payload payload;
   payload.message = this_thread.random_string;
   payload.write(proto.get());
-  std::string serialized = strBuffer->getBufferAsString();
-  context.SendResponse(
-    reinterpret_cast<const uint8_t *>(serialized.c_str()),
-    serialized.length());
+
+  // Get serialized data
+  uint8_t* buf;
+  uint32_t sz;
+  strBuffer->getBuffer(&buf, &sz);
+
+  context.SendResponse(buf, sz);
 }
 
 int main(int argc, char **argv) {
