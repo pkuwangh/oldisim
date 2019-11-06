@@ -83,3 +83,39 @@ target_link_libraries(
     PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB} ${THRIFT_SHARED_LIBRARY})
 
 
+# Generate getops for DriverNodeRank
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/DriverNodeRankCmdline.h
+           ${CMAKE_CURRENT_BINARY_DIR}/DriverNodeRankCmdline.cc
+    COMMAND ${GENGETOPT_EXECUTABLE}
+        -i ${CMAKE_CURRENT_SOURCE_DIR}/DriverNodeRankCmdline.ggo
+        -F DriverNodeRankCmdline
+        --output-dir=${CMAKE_CURRENT_BINARY_DIR}
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/DriverNodeRankCmdline.ggo
+)
+add_custom_target(
+    DriverNodeRank_gengetopt ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/DriverNodeRankCmdline.h
+            ${CMAKE_CURRENT_BINARY_DIR}/DriverNodeRankCmdline.cc
+)
+add_library(DriverNodeRankcmdline
+    ${CMAKE_CURRENT_BINARY_DIR}/DriverNodeRankCmdline.h
+    ${CMAKE_CURRENT_BINARY_DIR}/DriverNodeRankCmdline.cc)
+
+add_dependencies(DriverNodeRankcmdline DriverNodeRank_gengetopt)
+
+
+# Build DriverNodeRank binary
+add_executable(DriverNodeRank
+               DriverNodeRank.cc)
+target_compile_features(DriverNodeRank PRIVATE cxx_std_11)
+target_include_directories(
+    DriverNodeRank
+    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/
+           ${LIBEVENT_INCLUDE_DIR}
+           ${JEMALLOC_INCLUDE_DIR})
+
+target_link_libraries(
+    DriverNodeRank
+    PRIVATE oldisimlib DriverNodeRankcmdline
+    PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})

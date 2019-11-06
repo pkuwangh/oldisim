@@ -14,9 +14,7 @@
 
 #include <cstdio>
 #include <memory>
-#include <sstream>
 #include <string>
-#include <utility>
 
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/transport/TBufferTransports.h>
@@ -33,6 +31,7 @@
 #include "RequestTypes.h"
 
 #include "gen-cpp/ranking_types.h"
+#include "utils.h"
 
 using apache::thrift::protocol::TBinaryProtocol;
 using apache::thrift::transport::TMemoryBuffer;
@@ -45,23 +44,6 @@ const int kMaxResponseSize = 512 * 1024;
 struct ThreadData {
   std::string random_string;
 };
-
-std::pair<std::string, int> parseHostnameAndPort(const std::string &address) {
-    std::stringstream s_stream{address};
-    std::string hostname;
-    if (!s_stream.good()) {
-        DIE("Failed to parse %s", address.c_str());
-    }
-    std::getline(s_stream, hostname, ':');
-    int port = 11222;
-    if (s_stream.good()) {
-      std::string s;
-      std::getline(s_stream, s, ':');
-      port = std::strtol(s.c_str(), NULL, 10);
-    }
-    return std::make_pair(hostname, port);
-
-}
 
 void PageRankRequestFanoutDone(oldisim::QueryContext& originating_query,
                              const oldisim::FanoutReplyTracker& results,
@@ -147,7 +129,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < args.leaf_given; i++) {
 
     //search::ParseServerAddress(args.leaf_arg[i], hostname, port);
-    auto host_port = parseHostnameAndPort(args.leaf_arg[i]);
+    auto host_port = ranking::utils::parseHostnameAndPort(args.leaf_arg[i]);
 
     server.AddChildNode(host_port.first, host_port.second);
   }
