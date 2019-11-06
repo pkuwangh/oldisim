@@ -3,3 +3,4 @@ project(oldisim_workloads)
 
 add_subdirectory(simple)
 add_subdirectory(search)
+add_subdirectory(ranking)

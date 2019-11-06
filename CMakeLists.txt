@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 project(oldisim C CXX)
 
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
@@ -40,8 +41,6 @@ endif()
 
 find_package(Threads REQUIRED)
 find_package(LibEvent REQUIRED)
-
-
 
 add_subdirectory(third_party)
 add_subdirectory(oldisim)

@@ -24,6 +24,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include <algorithm>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -127,6 +128,21 @@ inline addrinfo *ResolveHost(std::string hostname, uint16_t port) {
   return result;
 }
 
+inline std::string RandomString(size_t length) {
+  auto randchar = []() -> char {
+    const char charset[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+    const size_t max_index = (sizeof(charset) - 1);
+    return charset[rand() % max_index];
+  };
+  std::string str(length, 0);
+  std::generate_n(str.begin(), length, randchar);
+  return str;
+}
+
 void sleep_time(double duration);
+
 
 #endif  // OLDISIM_UTIL_H
