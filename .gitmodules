@@ -1,3 +1,6 @@
 [submodule "third_party/cereal"]
 	path = third_party/cereal
 	url = https://github.com/USCiLab/cereal
+[submodule "third_party/gapbs"]
+	path = third_party/gapbs
+	url = https://github.com/sbeamer/gapbs.git
