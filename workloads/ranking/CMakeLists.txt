@@ -19,6 +19,7 @@ target_include_directories(rankingDwarfs PUBLIC dwarfs/)
 target_compile_features(rankingDwarfs PRIVATE cxx_std_11)
 target_link_libraries(rankingDwarfs PUBLIC gapbs)
 
+
 # Generate getopts for LeafNodeRank
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/LeafNodeRankCmdline.h
@@ -37,8 +38,8 @@ add_custom_target(
 add_library(leafNodeRankcmdline
     ${CMAKE_CURRENT_BINARY_DIR}/LeafNodeRankCmdline.h
     ${CMAKE_CURRENT_BINARY_DIR}/LeafNodeRankCmdline.cc)
-
 add_dependencies(leafNodeRankcmdline leafNodeRank_gengetopt)
+
 
 # Build LeafNodeRank binary
 add_executable(LeafNodeRank
@@ -49,7 +50,7 @@ target_include_directories(LeafNodeRank
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${LIBEVENT_INCLUDE_DIR} ${JEMALLOC_INCLUDE_DIR} ${THRIFT_INCLUDE_DIR})
 
 target_link_libraries(LeafNodeRank
-    PRIVATE oldisimlib leafNodeRankcmdline rankingDwarfs icachebuster
+    PRIVATE OLDISim::OLDISim leafNodeRankcmdline rankingDwarfs icachebuster
     PUBLIC  Threads::Threads ZLIB::ZLIB ${LIBEVENT_LIB} ${JEMALLOC_LIB} ${THRIFT_SHARED_LIBRARY})
 target_compile_options(LeafNodeRank PUBLIC -fno-omit-frame-pointer)
 
@@ -88,7 +89,7 @@ target_include_directories(
            ${THRIFT_INCLUDE_DIR})
 target_link_libraries(
     ParentNodeRank
-    PRIVATE oldisimlib parentNodeRankcmdline
+    PRIVATE OLDISim::OLDISim parentNodeRankcmdline
     PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB} ${THRIFT_SHARED_LIBRARY})
 
 
@@ -126,5 +127,5 @@ target_include_directories(
 
 target_link_libraries(
     DriverNodeRank
-    PRIVATE oldisimlib DriverNodeRankcmdline
+    PRIVATE OLDISim::OLDISim DriverNodeRankcmdline
     PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})

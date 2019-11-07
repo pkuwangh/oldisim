@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.12)
+project(OLDISimlib)
+set(OLDISim_VERSION 0.0.1)
 
-project(oldisimlib)
+find_package(Boost 1.53.0 REQUIRED)
+find_package(Cereal REQUIRED)
 
-add_library(oldisimlib
+add_library(OLDISimlib
             src/AutoSnapshot.h
             src/CerealMapAsJSObject.h
             src/ChildConnection.cc
@@ -27,6 +30,37 @@ add_library(oldisimlib
             src/TestDriver.cc
             src/TestDriverImpl.h)
 
-target_include_directories(oldisimlib PUBLIC include/)
-target_link_libraries(oldisimlib PRIVATE boost_1_53 cereal)
-target_compile_features(oldisimlib PUBLIC cxx_std_11)
+target_compile_features(OLDISimlib
+    PUBLIC
+        cxx_std_11
+)
+target_include_directories(OLDISimlib PUBLIC
+    $<BUILD_INTERFACE:${OLDISimlib_BINARY_DIR}/include>
+    $<BUILD_INTERFACE:${OLDISimlib_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(OLDISimlib
+    PRIVATE Boost::boost Cereal::Cereal
+)
+add_library(OLDISim::OLDISim ALIAS OLDISimlib)
+
+install(
+    TARGETS
+        OLDISimlib
+    EXPORT OLDISimlibTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include
+)
+
+install(EXPORT OLDISimlibTargets
+    FILE OLDISimlibTargets.cmake
+    NAMESPACE OLDISim::
+    DESTINATION lib/cmake/OLDISim)
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file("OLDISimConfigVersion.cmake"
+    VERSION ${OLDISim_VERSION}
+    COMPATIBILITY SameMajorVersion
+)

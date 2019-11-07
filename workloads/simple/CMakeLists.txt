@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(oldisim_simple)
+project(OLDISim_simple)
 
 find_program(GENGETOPT_EXECUTABLE gengetopt REQUIRED)
 
@@ -11,7 +11,7 @@ target_compile_features(LeafNodeTestFramework PRIVATE cxx_std_11)
 target_include_directories(LeafNodeTestFramework
     PUBLIC ${LIBEVENT_INCLUDE_DIR} ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(LeafNodeTestFramework
-    PRIVATE oldisimlib
+    PRIVATE OLDISim::OLDISim
     PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
@@ -23,7 +23,7 @@ target_compile_features(ParentNodeTestFramework PRIVATE cxx_std_11)
 target_include_directories(ParentNodeTestFramework
     PUBLIC ${LIBEVENT_INCLUDE_DIR} ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(ParentNodeTestFramework
-    PRIVATE oldisimlib
+    PRIVATE OLDISim::OLDISim
     PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 # Generate getops for DriverNodeTest
@@ -59,5 +59,5 @@ target_include_directories(
 
 target_link_libraries(
     DriverNodeTestFramework
-    PRIVATE oldisimlib DriverNodeTestFrameworkcmdline
+    PRIVATE OLDISim::OLDISim DriverNodeTestFrameworkcmdline
     PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})

@@ -1,17 +1,13 @@
 cmake_minimum_required(VERSION 3.12)
 project(oldisimtp LANGUAGES C CXX)
 
-add_library(boost_1_53 INTERFACE)
-target_include_directories(
-    boost_1_53 INTERFACE boost_1_53_0/)
+if(NOT EXISTS "${PROJECT_SOURCE_DIR}/cereal/CMakeLists.txt" OR
+   NOT EXISTS "${PROJECT_SOURCE_DIR}/gapbs/src/pr.cc")
+    message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
+endif()
 
-add_library(cereal INTERFACE)
-target_include_directories(
-    cereal INTERFACE cereal/include/
-)
 
 find_package(OpenMP)
-
 set(GAPBS_SRCS
     gapbs/src/pr.cc
     gapbs/src/util.h

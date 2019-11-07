@@ -65,7 +65,7 @@ target_include_directories(LeafNode
                            PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
                                   ${LIBEVENT_INCLUDE_DIR} ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(LeafNode
-                      PRIVATE oldisimlib icachebuster leafnodecmdline
+                      PRIVATE OLDISim::OLDISim icachebuster leafnodecmdline
                       PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
@@ -102,7 +102,7 @@ target_include_directories(
            ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(
     ParentNode
-    PRIVATE oldisimlib parentnodecmdline
+    PRIVATE OLDISim::OLDISim parentnodecmdline
     PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
@@ -141,7 +141,7 @@ target_include_directories(
 
 target_link_libraries(
     LoadBalancerNode
-    PRIVATE oldisimlib LoadBalancernodecmdline
+    PRIVATE OLDISim::OLDISim LoadBalancernodecmdline
     PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
@@ -179,7 +179,7 @@ target_include_directories(
 
 target_link_libraries(
     DriverNode
-    PRIVATE oldisimlib Drivernodecmdline
+    PRIVATE OLDISim::OLDISim Drivernodecmdline
     PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
@@ -192,4 +192,4 @@ target_include_directories(LeafKernel
                             PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/
                                    ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(LeafKernel
-                      PRIVATE oldisimlib icachebuster ${JEMALLOC_LIB})
+                      PRIVATE OLDISim::OLDISim icachebuster ${JEMALLOC_LIB})
