@@ -32,7 +32,11 @@
 #include "LeafNodeRankCmdline.h"
 #include "RequestTypes.h"
 
+#include "dwarfs/pagerank.h"
 #include "gen-cpp/ranking_types.h"
+
+#include "../search/ICacheBuster.h"
+
 
 using apache::thrift::protocol::TBinaryProtocol;
 using apache::thrift::transport::TMemoryBuffer;
@@ -45,6 +49,8 @@ const int kNumNops = 6;
 const int kNumNopIterations = 60;
 
 struct ThreadData {
+  std::unique_ptr<ranking::dwarfs::PageRank> page_ranker;
+  std::unique_ptr<ICacheBuster> icache_buster;
   std::default_random_engine rng;
   std::gamma_distribution<double> latency_distribution;
   std::string random_string;
@@ -53,6 +59,10 @@ struct ThreadData {
 void ThreadStartup(oldisim::NodeThread &thread,
                    std::vector<ThreadData> &thread_data) {
   auto &this_thread = thread_data[thread.get_thread_num()];
+
+  this_thread.page_ranker.reset(new ranking::dwarfs::PageRank{4, 16});
+  this_thread.icache_buster.reset(new ICacheBuster(100000));
+
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   this_thread.rng.seed(seed);
 
@@ -70,11 +80,13 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   auto &this_thread = thread_data[thread.get_thread_num()];
   int num_iterations = this_thread.latency_distribution(this_thread.rng);
   for (int i = 0; i < num_iterations; i++) {
-    for (int j = 0; j < kNumNopIterations; j++) {
-      for (int k = 0; k < kNumNops; k++) {
-        asm volatile("nop");
-      }
-    }
+    this_thread.icache_buster->RunNextMethod();
+    // for (int j = 0; j < kNumNopIterations; j++) {
+    //   for (int k = 0; k < kNumNops; k++) {
+    //     asm volatile("nop");
+    //   }
+    // }
+    this_thread.page_ranker->rank(20, 1e-4);
   }
   std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
   std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));

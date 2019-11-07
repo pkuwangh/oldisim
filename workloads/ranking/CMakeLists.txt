@@ -11,6 +11,14 @@ THRIFT_GENERATE_CPP(RANKING_THRIFT_SRCS RANKING_THRIFT_HDRS RANKING_THRIFT_TGTS
     BINARY_ROOT gen-cpp/
     THRIFT_FILES ranking.thrift)
 
+# Build Ranking Dwarfs library
+add_library(rankingDwarfs
+    dwarfs/pagerank.cpp
+    dwarfs/pagerank.h)
+target_include_directories(rankingDwarfs PUBLIC dwarfs/)
+target_compile_features(rankingDwarfs PRIVATE cxx_std_11)
+target_link_libraries(rankingDwarfs PUBLIC gapbs)
+
 # Generate getopts for LeafNodeRank
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/LeafNodeRankCmdline.h
@@ -41,8 +49,9 @@ target_include_directories(LeafNodeRank
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${LIBEVENT_INCLUDE_DIR} ${JEMALLOC_INCLUDE_DIR} ${THRIFT_INCLUDE_DIR})
 
 target_link_libraries(LeafNodeRank
-    PRIVATE oldisimlib leafNodeRankcmdline
-    PUBLIC Threads::Threads ZLIB::ZLIB ${LIBEVENT_LIB} ${JEMALLOC_LIB} ${THRIFT_SHARED_LIBRARY})
+    PRIVATE oldisimlib leafNodeRankcmdline rankingDwarfs icachebuster
+    PUBLIC  Threads::Threads ZLIB::ZLIB ${LIBEVENT_LIB} ${JEMALLOC_LIB} ${THRIFT_SHARED_LIBRARY})
+target_compile_options(LeafNodeRank PUBLIC -fno-omit-frame-pointer)
 
 # Generate getopts for ParentNodeRank
 add_custom_command(

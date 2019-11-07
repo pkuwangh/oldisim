@@ -127,10 +127,7 @@ int main(int argc, char** argv) {
 
 
   for (int i = 0; i < args.leaf_given; i++) {
-
-    //search::ParseServerAddress(args.leaf_arg[i], hostname, port);
     auto host_port = ranking::utils::parseHostnameAndPort(args.leaf_arg[i]);
-
     server.AddChildNode(host_port.first, host_port.second);
   }
 

@@ -42,6 +42,8 @@ endif()
 find_package(Threads REQUIRED)
 find_package(LibEvent REQUIRED)
 
+add_compile_options(-fno-omit-frame-pointer)
+
 add_subdirectory(third_party)
 add_subdirectory(oldisim)
 add_subdirectory(workloads)
