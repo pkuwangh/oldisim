@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
-
+add_compile_options(-fno-omit-frame-pointer)
 
 find_library(JEMALLOC_LIB NAMES jemalloc REQUIRED)
 find_path(JEMALLOC_INCLUDE_DIR NAMES jemalloc/jemalloc.h REQUIRED)
@@ -42,16 +42,21 @@ endif()
 find_package(Threads REQUIRED)
 find_package(LibEvent REQUIRED)
 
-add_compile_options(-fno-omit-frame-pointer)
-
 # Pull submodules
+if(DEFINED ENV{HTTP_PROXY})
+    list(APPEND GIT_HTTP_PROXY -c http.proxy=$ENV{HTTP_PROXY})
+endif()
+if(DEFINED ENV{HTTPS_PROXY})
+    list(APPEND GIT_HTTP_PROXY -c https.proxy=$ENV{HTTPS_PROXY})
+endif()
+
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 # Update submodules as needed
     option(GIT_SUBMODULE "Check submodules during build" ON)
     if(GIT_SUBMODULE)
         message(STATUS "Submodule update")
-        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+        execute_process(COMMAND ${GIT_EXECUTABLE} ${GIT_HTTP_PROXY} submodule update --init --recursive
                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                         RESULT_VARIABLE GIT_SUBMOD_RESULT)
         if(NOT GIT_SUBMOD_RESULT EQUAL "0")
