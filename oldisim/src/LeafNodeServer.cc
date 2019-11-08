@@ -699,8 +699,8 @@ void LeafNodeServer::Run() {
   hints.ai_flags = AI_PASSIVE;
   hints.ai_addr = nullptr;
 
-  const char* port = std::to_string(impl_->port).c_str();
-  if ((status = getaddrinfo(nullptr, port, &hints, &servinfo)) != 0) {
+  auto port = std::to_string(impl_->port);
+  if ((status = getaddrinfo(nullptr, port.c_str(), &hints, &servinfo)) != 0) {
     DIE("getaddrinfo error: %s", gai_strerror(status));
   }
 
@@ -723,7 +723,6 @@ void LeafNodeServer::Run() {
     DIE("bind failed: %s", strerror(errno));
   }
 
-  freeaddrinfo(servinfo);
 
   evutil_socket_t listener = socketfd;
   evutil_make_socket_nonblocking(listener);
@@ -746,6 +745,7 @@ void LeafNodeServer::Run() {
       strncpy(ipstr, "Unknown AF", INET6_ADDRSTRLEN);
   }
   std::cout << "LeafServer listening on " << ipstr << ":" << impl_->port << std::endl;
+  freeaddrinfo(servinfo);
 
   // Init the thread init barrier
   pthread_barrier_init(&impl_->thread_init_barrier, nullptr,

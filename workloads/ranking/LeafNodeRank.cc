@@ -37,7 +37,6 @@
 
 #include "../search/ICacheBuster.h"
 
-
 using apache::thrift::protocol::TBinaryProtocol;
 using apache::thrift::transport::TMemoryBuffer;
 
@@ -57,10 +56,11 @@ struct ThreadData {
 };
 
 void ThreadStartup(oldisim::NodeThread &thread,
-                   std::vector<ThreadData> &thread_data) {
+                   std::vector<ThreadData> &thread_data,
+                   ranking::dwarfs::PageRankParams &params) {
   auto &this_thread = thread_data[thread.get_thread_num()];
-
-  this_thread.page_ranker.reset(new ranking::dwarfs::PageRank{4, 16});
+  auto graph = params.buildGraph();
+  this_thread.page_ranker.reset(new ranking::dwarfs::PageRank{std::move(graph)});
   this_thread.icache_buster.reset(new ICacheBuster(100000));
 
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -81,13 +81,9 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   int num_iterations = this_thread.latency_distribution(this_thread.rng);
   for (int i = 0; i < num_iterations; i++) {
     this_thread.icache_buster->RunNextMethod();
-    // for (int j = 0; j < kNumNopIterations; j++) {
-    //   for (int k = 0; k < kNumNops; k++) {
-    //     asm volatile("nop");
-    //   }
-    // }
-    this_thread.page_ranker->rank(20, 1e-4);
+
   }
+  this_thread.page_ranker->rank(10, 1e-4);
   std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
   std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
 
@@ -97,7 +93,7 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   payload.write(proto.get());
 
   // Get serialized data
-  uint8_t* buf;
+  uint8_t *buf;
   uint32_t sz;
   strBuffer->getBuffer(&buf, &sz);
 
@@ -118,10 +114,11 @@ int main(int argc, char **argv) {
   }
 
   std::vector<ThreadData> thread_data(args.threads_arg);
-
+  ranking::dwarfs::PageRankParams params{18, 10};
   oldisim::LeafNodeServer server(args.port_arg);
   server.SetThreadStartupCallback(
-      std::bind(ThreadStartup, std::placeholders::_1, std::ref(thread_data)));
+      std::bind(ThreadStartup, std::placeholders::_1, std::ref(thread_data),
+                std::ref(params)));
   server.RegisterQueryCallback(
       ranking::kPageRankRequestType,
       std::bind(PageRankRequestHandler, std::placeholders::_1,

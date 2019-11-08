@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <functional>
 #include <vector>
 
 namespace oldisim {

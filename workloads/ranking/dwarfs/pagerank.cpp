@@ -12,18 +12,19 @@
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL REGENTS BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL REGENTS BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+// OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+// EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pagerank.h"
+#include <iostream>
 #include <string>
 
 #include <gapbs/src/benchmark.h>
@@ -32,22 +33,43 @@
 namespace ranking {
 namespace dwarfs {
 
-PageRank::PageRank(int scale, int degrees) : scale_(scale), degrees_(degrees) {
-  char *argv[4] = {(char *)"pr", (char *)"-u", (char *)std::to_string(scale_).c_str()};
-  CLPageRank cli{3, argv, "pagerank", 1e-4, 20};
-  Builder b{cli};
-  graph_ = std::move(b.MakeGraph());
+struct PageRankParams::Impl {
+public:
+  Impl(std::unique_ptr<CLPageRankDummy> cli) : cli_{std::move(cli)} {
+    cli_->ParseArgs();
+    builder_.reset(new Builder(*cli_));
+  }
+  CSRGraph<int32_t> makeGraph() { return std::move(builder_->MakeGraph()); }
+
+private:
+  std::unique_ptr<Builder> builder_;
+  std::unique_ptr<CLPageRankDummy> cli_;
+};
+
+PageRankParams::PageRankParams(int scale, int degrees)
+    : scale_(scale), degrees_(degrees) {
+  auto scale_str = std::to_string(scale_);
+  std::unique_ptr<CLPageRankDummy> cli{
+      new CLPageRankDummy(scale, degrees, true, 1, 1e-4, 20)};
+  pimpl.reset(new Impl(std::move(cli)));
 }
 
+PageRankParams::~PageRankParams(){};
+
+CSRGraph<int32_t> PageRankParams::buildGraph() { return pimpl->makeGraph(); }
+
+PageRank::PageRank(CSRGraph<int32_t> graph) : graph_(std::move(graph)) {}
+
 /** PageRank implementation taken from
-* http://gap.cs.berkeley.edu/benchmark.html
-*/
+ * http://gap.cs.berkeley.edu/benchmark.html
+ */
 pvector<float> PageRank::rank(int max_iters, double epsilon) {
   const float init_score = 1.0f / graph_.num_nodes();
   const float base_score = (1.0f - kDamp) / graph_.num_nodes();
   pvector<float> scores(graph_.num_nodes(), init_score);
   pvector<float> outgoing_contrib(graph_.num_nodes());
-  for (int iter = 0; iter < max_iters; iter++) {
+  int iter;
+  for (iter = 0; iter < max_iters; iter++) {
     double error = 0;
 
 #pragma omp parallel for

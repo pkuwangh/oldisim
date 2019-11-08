@@ -1,14 +1,16 @@
 cmake_minimum_required(VERSION 3.12)
 project(oldisim C CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
-set(CMAKE_CXX_EXTENSIONS OFF)
+
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
 add_compile_options(-fno-omit-frame-pointer)
-
+add_link_options(-fno-omit-frame-pointer)
 find_library(JEMALLOC_LIB NAMES jemalloc REQUIRED)
 find_path(JEMALLOC_INCLUDE_DIR NAMES jemalloc/jemalloc.h REQUIRED)
 if (JEMALLOC_INCLUDE_DIR AND JEMALLOC_LIB)

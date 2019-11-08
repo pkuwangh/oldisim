@@ -14,7 +14,6 @@
 
 #include "oldisim/FanoutManager.h"
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
