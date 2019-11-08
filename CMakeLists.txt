@@ -7,8 +7,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
-
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
+
 add_compile_options(-fno-omit-frame-pointer)
 add_link_options(-fno-omit-frame-pointer)
 find_library(JEMALLOC_LIB NAMES jemalloc REQUIRED)
