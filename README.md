@@ -13,7 +13,7 @@ Some examples are web search and social networking.
 
 # Changes
 
-This is version is a fork. This version uses CMake to build the benchmarks, and switches TCMallo for JEMalloc.
+This is version is a fork. This version uses CMake to build the benchmarks, and switches TCMalloc for JEMalloc.
 
 
 # Run oldisim in a local cluster
@@ -22,11 +22,12 @@ This is version is a fork. This version uses CMake to build the benchmarks, and 
 The following are the required to build oldisim from this repo.
 
 Requirements:
-* CMake Version 3.13 or greater
+* CMake Version 3.12 or greater
 * C++11 compatible compiler, e.g., g++ v.4.7.3 or later
 versions.
 * Boost version 1.53 or higher (included).
 * Cereal (included as a submodule).
+* Thrift 0.13.0+
 
 Install the requirements with:
 
