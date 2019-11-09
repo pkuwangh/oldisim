@@ -57,7 +57,7 @@ public:
 
   explicit PageRank(CSRGraph<int32_t> graph);
 
-  pvector<float> rank(int max_iters, double epsilon);
+  int rank(int max_iters, double epsilon);
 
 private:
   CSRGraph<int32_t> graph_;

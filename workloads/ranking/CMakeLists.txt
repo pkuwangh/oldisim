@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.12)
 project(oldisim_ranking)
 
+include(build-folly)
 
+find_package(DoubleConversion REQUIRED)
+find_package(Glog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Thrift REQUIRED)
 find_program(GENGETOPT_EXECUTABLE gengetopt REQUIRED)
@@ -16,7 +19,6 @@ add_library(rankingDwarfs
     dwarfs/pagerank.cpp
     dwarfs/pagerank.h)
 target_include_directories(rankingDwarfs PUBLIC dwarfs/)
-target_compile_features(rankingDwarfs PRIVATE cxx_std_11)
 target_link_libraries(rankingDwarfs PUBLIC gapbs)
 
 
@@ -40,19 +42,37 @@ add_library(leafNodeRankcmdline
     ${CMAKE_CURRENT_BINARY_DIR}/LeafNodeRankCmdline.cc)
 add_dependencies(leafNodeRankcmdline leafNodeRank_gengetopt)
 
-
 # Build LeafNodeRank binary
+
 add_executable(LeafNodeRank
     LeafNodeRank.cc
     ${RANKING_THRIFT_SRCS} ${RANKING_THRIFT_HDRS})
-target_compile_features(LeafNodeRank PRIVATE cxx_std_11)
 target_include_directories(LeafNodeRank
-    PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${LIBEVENT_INCLUDE_DIR} ${JEMALLOC_INCLUDE_DIR} ${THRIFT_INCLUDE_DIR})
-
+    PUBLIC
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${LIBEVENT_INCLUDE_DIR}
+        ${JEMALLOC_INCLUDE_DIR}
+        ${THRIFT_INCLUDE_DIR}
+        ${FOLLY_INCLUDE_DIR})
 target_link_libraries(LeafNodeRank
-    PRIVATE OLDISim::OLDISim leafNodeRankcmdline rankingDwarfs icachebuster
-    PUBLIC  Threads::Threads ZLIB::ZLIB ${LIBEVENT_LIB} ${JEMALLOC_LIB} ${THRIFT_SHARED_LIBRARY})
+    PRIVATE
+        OLDISim::OLDISim
+        leafNodeRankcmdline
+        rankingDwarfs
+        icachebuster
+        ${FOLLY_LIBRARIES}
+        ${CMAKE_DL_LIBS}
+        glog::glog
+        ${DOUBLE_CONVERSION_LIBRARY}
+    PUBLIC
+        Threads::Threads
+        ZLIB::ZLIB
+        ${LIBEVENT_LIB}
+        ${JEMALLOC_LIB}
+        ${THRIFT_SHARED_LIBRARY})
 target_compile_options(LeafNodeRank PUBLIC -fno-omit-frame-pointer)
+add_dependencies(LeafNodeRank folly)
+
 
 # Generate getopts for ParentNodeRank
 add_custom_command(
@@ -80,7 +100,6 @@ add_dependencies(parentNodeRankcmdline parentNodeRank_gengetopt)
 add_executable(ParentNodeRank
                ParentNodeRank.cc
                ${RANKING_THRIFT_SRCS} ${RANKING_THRIFT_HDRS})
-target_compile_features(ParentNodeRank PRIVATE cxx_std_11)
 target_include_directories(
     ParentNodeRank
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/
@@ -118,7 +137,6 @@ add_dependencies(DriverNodeRankcmdline DriverNodeRank_gengetopt)
 # Build DriverNodeRank binary
 add_executable(DriverNodeRank
                DriverNodeRank.cc)
-target_compile_features(DriverNodeRank PRIVATE cxx_std_11)
 target_include_directories(
     DriverNodeRank
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/

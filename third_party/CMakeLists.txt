@@ -51,5 +51,3 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(gapbs PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-
-add_subdirectory(folly)

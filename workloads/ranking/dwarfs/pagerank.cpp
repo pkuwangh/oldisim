@@ -63,7 +63,7 @@ PageRank::PageRank(CSRGraph<int32_t> graph) : graph_(std::move(graph)) {}
 /** PageRank implementation taken from
  * http://gap.cs.berkeley.edu/benchmark.html
  */
-pvector<float> PageRank::rank(int max_iters, double epsilon) {
+int PageRank::rank(int max_iters, double epsilon) {
   const float init_score = 1.0f / graph_.num_nodes();
   const float base_score = (1.0f - kDamp) / graph_.num_nodes();
   pvector<float> scores(graph_.num_nodes(), init_score);
@@ -88,7 +88,7 @@ pvector<float> PageRank::rank(int max_iters, double epsilon) {
     if (error < epsilon)
       break;
   }
-  return scores;
+  return scores.size();
 }
 
 } // namespace dwarfs

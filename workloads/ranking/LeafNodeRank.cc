@@ -20,6 +20,8 @@
 #include <string>
 #include <vector>
 
+#include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/futures/Future.h>
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/transport/TBufferTransports.h>
 
@@ -48,6 +50,7 @@ const int kNumNops = 6;
 const int kNumNopIterations = 60;
 
 struct ThreadData {
+  std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool;
   std::unique_ptr<ranking::dwarfs::PageRank> page_ranker;
   std::unique_ptr<ICacheBuster> icache_buster;
   std::default_random_engine rng;
@@ -55,12 +58,15 @@ struct ThreadData {
   std::string random_string;
 };
 
-void ThreadStartup(oldisim::NodeThread &thread,
-                   std::vector<ThreadData> &thread_data,
-                   ranking::dwarfs::PageRankParams &params) {
+void ThreadStartup(
+    oldisim::NodeThread &thread, std::vector<ThreadData> &thread_data,
+    ranking::dwarfs::PageRankParams &params,
+    const std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool) {
   auto &this_thread = thread_data[thread.get_thread_num()];
   auto graph = params.buildGraph();
-  this_thread.page_ranker.reset(new ranking::dwarfs::PageRank{std::move(graph)});
+  this_thread.cpuThreadPool = cpuThreadPool;
+  this_thread.page_ranker.reset(
+      new ranking::dwarfs::PageRank{std::move(graph)});
   this_thread.icache_buster.reset(new ICacheBuster(100000));
 
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -81,15 +87,19 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   int num_iterations = this_thread.latency_distribution(this_thread.rng);
   for (int i = 0; i < num_iterations; i++) {
     this_thread.icache_buster->RunNextMethod();
-
   }
-  this_thread.page_ranker->rank(10, 1e-4);
+  auto f = folly::via(
+    this_thread.cpuThreadPool.get(),
+    [&this_thread]() { return this_thread.page_ranker->rank(10, 1e-4);}
+  );
+
   std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
   std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
 
   // Serialize random string as Thrift
+  int result = std::move(f).get();
   ranking::Payload payload;
-  payload.message = this_thread.random_string;
+  payload.message = this_thread.random_string + std::to_string(result);
   payload.write(proto.get());
 
   // Get serialized data
@@ -113,12 +123,14 @@ int main(int argc, char **argv) {
     log_level = QUIET;
   }
 
+  auto cpuThreadPool =
+      std::make_shared<folly::CPUThreadPoolExecutor>(args.cpu_threads_arg);
   std::vector<ThreadData> thread_data(args.threads_arg);
   ranking::dwarfs::PageRankParams params{18, 10};
   oldisim::LeafNodeServer server(args.port_arg);
   server.SetThreadStartupCallback(
       std::bind(ThreadStartup, std::placeholders::_1, std::ref(thread_data),
-                std::ref(params)));
+                std::ref(params), cpuThreadPool));
   server.RegisterQueryCallback(
       ranking::kPageRankRequestType,
       std::bind(PageRankRequestHandler, std::placeholders::_1,

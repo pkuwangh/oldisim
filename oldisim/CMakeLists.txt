@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(OLDISimlib)
 set(OLDISim_VERSION 0.0.1)
 
-find_package(Boost 1.53.0 REQUIRED)
+find_package(Boost 1.53.0 COMPONENTS context coroutine date_time thread system regex REQUIRED)
 find_package(Cereal REQUIRED)
 
 add_library(OLDISimlib
@@ -40,7 +40,7 @@ target_include_directories(OLDISimlib PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(OLDISimlib
-    PRIVATE Boost::boost Cereal::Cereal
+    PRIVATE Boost::boost Boost::context Cereal::Cereal
 )
 add_library(OLDISim::OLDISim ALIAS OLDISimlib)
 
