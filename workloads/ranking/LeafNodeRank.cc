@@ -88,10 +88,9 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   for (int i = 0; i < num_iterations; i++) {
     this_thread.icache_buster->RunNextMethod();
   }
-  auto f = folly::via(
-    this_thread.cpuThreadPool.get(),
-    [&this_thread]() { return this_thread.page_ranker->rank(10, 1e-4);}
-  );
+  auto f = folly::via(this_thread.cpuThreadPool.get(), [&this_thread]() {
+    return this_thread.page_ranker->rank(args.graph_max_iters_arg, 1e-4);
+  });
 
   std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
   std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
@@ -126,7 +125,7 @@ int main(int argc, char **argv) {
   auto cpuThreadPool =
       std::make_shared<folly::CPUThreadPoolExecutor>(args.cpu_threads_arg);
   std::vector<ThreadData> thread_data(args.threads_arg);
-  ranking::dwarfs::PageRankParams params{18, 10};
+  ranking::dwarfs::PageRankParams params{args.graph_scale_arg, args.graph_degree_arg};
   oldisim::LeafNodeServer server(args.port_arg);
   server.SetThreadStartupCallback(
       std::bind(ThreadStartup, std::placeholders::_1, std::ref(thread_data),

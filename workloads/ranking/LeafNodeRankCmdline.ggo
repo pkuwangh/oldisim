@@ -22,6 +22,9 @@ args "-c cc --show-required -C --default-optional -l"
 option "verbose" v "Verbosity. Repeat for more verbose." multiple
 option "quiet" - "Disable log messages."
 
+option "graph_scale" - "Generate 2^scale uniform-random graph." int default="4"
+option "graph_degree" - "Average degree for synthetic graph." int default="16"
+option "graph_max_iters" - "Perform at most 'graph_max_iters' iterations during PageRank." int default="10"
 option "threads" - "Number of threads to use for serving." int default="1"
 option "cpu_threads" - "Number of threads to use for computation." int default="1"
 option "port" - "Port to run server on." int default="11222"
