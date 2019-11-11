@@ -39,7 +39,6 @@ using apache::thrift::transport::TMemoryBuffer;
 static gengetopt_args_info args;
 
 const int kMaxLeafRequestSize = 8 * 1024;
-const int kMaxResponseSize = 512 * 1024;
 
 struct ThreadData {
   std::string random_string;
@@ -63,7 +62,7 @@ void ThreadStartup(oldisim::NodeThread &thread,
     fanout_manager.MakeChildConnections(i, args.connections_arg);
   }
 
-  this_thread.random_string = RandomString(kMaxResponseSize);
+  this_thread.random_string = RandomString(args.max_response_size_arg);
 }
 
 void PageRankRequestHandler(oldisim::NodeThread& thread,

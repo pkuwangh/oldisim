@@ -22,6 +22,7 @@ args "-c cc --show-required -C --default-optional -l"
 option "verbose" v "Verbosity. Repeat for more verbose." multiple
 option "quiet" - "Disable log messages."
 
+option "max_response_size" - "Maximum response size in bytes returned by the Parent." int default="8192"
 option "threads" - "Number of threads to use for serving." int default="1"
 option "port" - "Port to run server on." int default="11333"
 option "leaf" - "search leaf server hostname[:port]. Repeat to specify multiple servers." string multiple

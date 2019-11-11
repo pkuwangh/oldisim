@@ -77,7 +77,7 @@ void ThreadStartup(
   this_thread.latency_distribution =
       std::gamma_distribution<double>(alpha, beta);
 
-  this_thread.random_string = RandomString(kMaxResponseSize);
+  this_thread.random_string = RandomString(args.max_response_size_arg);
 }
 
 void PageRankRequestHandler(oldisim::NodeThread &thread,
