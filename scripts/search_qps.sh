@@ -42,7 +42,7 @@ run_loadtest() {
   fi
 
   # run the command, saving result to tmpfile
-  local tmp_file=$(tempfile)
+  local tmp_file=$(mktemp)
   $command $qps_arg &>$tmp_file &
   LOADTEST_PID=$!
 
