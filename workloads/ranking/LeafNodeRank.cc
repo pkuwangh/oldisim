@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
-#include <iostream>
 #include <memory>
 #include <random>
 #include <string>
 #include <vector>
 
+#include <folly/Range.h>
+#include <folly/compression/Compression.h>
+#include <folly/compression/Counters.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/futures/Future.h>
 #include <thrift/protocol/TBinaryProtocol.h>
@@ -48,6 +51,7 @@ static gengetopt_args_info args;
 static const int kMaxResponseSize = 1 << 12;
 const int kNumNops = 6;
 const int kNumNopIterations = 60;
+const int kNumCompressIterations = 100;
 
 struct ThreadData {
   std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool;
@@ -77,7 +81,28 @@ void ThreadStartup(
   this_thread.latency_distribution =
       std::gamma_distribution<double>(alpha, beta);
 
-  this_thread.random_string = RandomString(args.max_response_size_arg);
+  this_thread.random_string = RandomString(args.compression_data_size_arg);
+}
+
+std::string compressPayload(const std::string &data, int result) {
+  std::string str{data};
+  folly::ByteRange output((folly::StringPiece(str)));
+  auto codec = folly::io::getCodec(folly::io::CodecType::ZSTD);
+  std::string compressed;
+  for (int i = 0; i < args.compression_passes_arg; i++) {
+    str = codec->compress(str);
+  }
+  return str;
+}
+
+std::shared_ptr<TMemoryBuffer> serializePayload(const std::string &data) {
+  std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
+  std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
+
+  ranking::Payload payload;
+  payload.message = data;
+  payload.write(proto.get());
+  return strBuffer;
 }
 
 void PageRankRequestHandler(oldisim::NodeThread &thread,
@@ -92,21 +117,18 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
     return this_thread.page_ranker->rank(args.graph_max_iters_arg, 1e-4);
   });
 
-  std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
-  std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
+  int result = std::move(f).get();
 
   // Serialize random string as Thrift
-  int result = std::move(f).get();
-  ranking::Payload payload;
-  payload.message = this_thread.random_string + std::to_string(result);
-  payload.write(proto.get());
+  auto compressed = compressPayload(this_thread.random_string, result);
+  auto strBuffer = serializePayload(compressed);
 
   // Get serialized data
   uint8_t *buf;
   uint32_t sz;
   strBuffer->getBuffer(&buf, &sz);
 
-  context.SendResponse(buf, sz);
+  context.SendResponse(buf, std::min(static_cast<uint32_t>(args.max_response_size_arg), sz));
 }
 
 int main(int argc, char **argv) {
@@ -125,7 +147,8 @@ int main(int argc, char **argv) {
   auto cpuThreadPool =
       std::make_shared<folly::CPUThreadPoolExecutor>(args.cpu_threads_arg);
   std::vector<ThreadData> thread_data(args.threads_arg);
-  ranking::dwarfs::PageRankParams params{args.graph_scale_arg, args.graph_degree_arg};
+  ranking::dwarfs::PageRankParams params{args.graph_scale_arg,
+                                         args.graph_degree_arg};
   oldisim::LeafNodeServer server(args.port_arg);
   server.SetThreadStartupCallback(
       std::bind(ThreadStartup, std::placeholders::_1, std::ref(thread_data),

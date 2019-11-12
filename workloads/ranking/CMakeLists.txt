@@ -5,7 +5,12 @@ include(build-folly)
 
 find_package(DoubleConversion REQUIRED)
 find_package(Glog REQUIRED)
+find_package(BZip2 REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(Zstd REQUIRED)
+find_package(LZ4 REQUIRED)
+find_package(Snappy REQUIRED)
+find_package(LibLZMA REQUIRED)
 find_package(Thrift REQUIRED)
 find_program(GENGETOPT_EXECUTABLE gengetopt REQUIRED)
 
@@ -53,6 +58,11 @@ target_include_directories(LeafNodeRank
         ${LIBEVENT_INCLUDE_DIR}
         ${JEMALLOC_INCLUDE_DIR}
         ${THRIFT_INCLUDE_DIR}
+        ${BZIP2_INCLUDE_DIR}
+        ${ZSTD_INCLUDE_DIR}
+        ${LZ4_INCLUDE_DIR}
+        ${SNAPPY_INCLUDE_DIR}
+        ${LIBLZMA_INCLUDE_DIRS}
         ${FOLLY_INCLUDE_DIR})
 target_link_libraries(LeafNodeRank
     PRIVATE
@@ -67,8 +77,13 @@ target_link_libraries(LeafNodeRank
     PUBLIC
         Threads::Threads
         ZLIB::ZLIB
+        ${BZIP2_LIBRARIES}
+        ${LZ4_LIBRARY}
+        ${ZSTD_LIBRARY}
+        ${SNAPPY_LIBRARY}
         ${LIBEVENT_LIB}
         ${JEMALLOC_LIB}
+        ${LIBLZMA_LIBRARIES}
         ${THRIFT_SHARED_LIBRARY})
 target_compile_options(LeafNodeRank PUBLIC -fno-omit-frame-pointer)
 add_dependencies(LeafNodeRank folly)
