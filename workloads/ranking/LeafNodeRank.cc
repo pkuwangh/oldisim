@@ -81,18 +81,16 @@ void ThreadStartup(
   this_thread.latency_distribution =
       std::gamma_distribution<double>(alpha, beta);
 
-  this_thread.random_string = RandomString(args.compression_data_size_arg);
+  this_thread.random_string = RandomString(args.random_data_size_arg);
 }
 
 std::string compressPayload(const std::string &data, int result) {
-  std::string str{data};
-  folly::ByteRange output((folly::StringPiece(str)));
+  folly::StringPiece output(
+      data.data(),
+      std::min(args.compression_data_size_arg, args.random_data_size_arg));
   auto codec = folly::io::getCodec(folly::io::CodecType::ZSTD);
-  std::string compressed;
-  for (int i = 0; i < args.compression_passes_arg; i++) {
-    str = codec->compress(str);
-  }
-  return str;
+  std::string compressed = codec->compress(output);
+  return std::move(compressed);
 }
 
 std::shared_ptr<TMemoryBuffer> serializePayload(const std::string &data) {
@@ -121,14 +119,17 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
 
   // Serialize random string as Thrift
   auto compressed = compressPayload(this_thread.random_string, result);
-  auto strBuffer = serializePayload(compressed);
+  auto fragment = folly::StringPiece(
+      this_thread.random_string.data(),
+      std::min(args.max_response_size_arg,
+               static_cast<int>(this_thread.random_string.size())));
+  auto strBuffer = serializePayload(fragment.str());
 
   // Get serialized data
   uint8_t *buf;
   uint32_t sz;
   strBuffer->getBuffer(&buf, &sz);
-
-  context.SendResponse(buf, std::min(static_cast<uint32_t>(args.max_response_size_arg), sz));
+  context.SendResponse(buf, sz);
 }
 
 int main(int argc, char **argv) {
