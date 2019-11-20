@@ -28,6 +28,8 @@ option "graph_max_iters" - "Perform at most 'graph_max_iters' iterations during 
 option "random_data_size" - "Number of bytes of string random data." int default="3145728"
 option "max_response_size" - "Maximum response size in bytes returned by the leaf server." int default="131072"
 option "compression_data_size" - "Number of bytes to compress per request." int default="131072"
+option "chase_iterations" - "Number of chases to execute on handler thread." int default="1024"
+option "io_chase_iterations" - "Number of chases to execute on IO threads." int default="512"
 option "threads" - "Number of threads to use for serving." int default="1"
 option "cpu_threads" - "Number of threads to use for computation." int default="1"
 option "io_threads" - "Number of threads to use for IO." int default="1"

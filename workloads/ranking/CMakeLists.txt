@@ -71,6 +71,7 @@ target_link_libraries(LeafNodeRank
         leafNodeRankcmdline
         rankingDwarfs
         icachebuster
+        PointerChaser
         ${FOLLY_LIBRARIES}
         ${CMAKE_DL_LIBS}
         glog::glog

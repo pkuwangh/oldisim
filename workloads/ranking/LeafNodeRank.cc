@@ -45,6 +45,7 @@
 #include "gen-cpp/ranking_types.h"
 
 #include "../search/ICacheBuster.h"
+#include "../search/PointerChase.h"
 
 using apache::thrift::protocol::TBinaryProtocol;
 using apache::thrift::transport::TMemoryBuffer;
@@ -57,11 +58,14 @@ const int kNumNops = 6;
 const int kNumNopIterations = 60;
 const int kNumCompressIterations = 100;
 const int kNumICacheBusterMethods = 100000;
+const int kPointerChaseSize = 10000000;
+
 struct ThreadData {
   std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool;
   std::shared_ptr<folly::IOThreadPoolExecutor> ioThreadPool;
   std::shared_ptr<ranking::TimekeeperPool> timekeeperPool;
   std::unique_ptr<ranking::dwarfs::PageRank> page_ranker;
+  std::unique_ptr<search::PointerChase> pointer_chaser;
   std::unique_ptr<ICacheBuster> icache_buster;
   std::default_random_engine rng;
   std::gamma_distribution<double> latency_distribution;
@@ -82,6 +86,7 @@ void ThreadStartup(
   this_thread.page_ranker.reset(
       new ranking::dwarfs::PageRank{std::move(graph)});
   this_thread.icache_buster.reset(new ICacheBuster(kNumICacheBusterMethods));
+  this_thread.pointer_chaser.reset(new search::PointerChase(kPointerChaseSize));
 
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   this_thread.rng.seed(seed);
@@ -119,6 +124,8 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   auto &this_thread = thread_data[thread.get_thread_num()];
   int num_iterations = this_thread.latency_distribution(this_thread.rng);
   ICacheBuster &buster = *this_thread.icache_buster;
+  search::PointerChase& chaser = *this_thread.pointer_chaser;
+
   for (int i = 0; i < num_iterations; i++) {
     buster.RunNextMethod();
   }
@@ -133,12 +140,14 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
   auto s = folly::futures::sleep(std::chrono::milliseconds(5), timekeeper.get())
                .via(this_thread.ioThreadPool.get())
-               .thenValue([result](auto &&) { return result + 1; });
+               .thenValue([&](auto &&) { chaser.Chase(args.io_chase_iterations_arg); return result + 1; });
 
   result = std::move(s).get();
   // auto end = std::chrono::high_resolution_clock::now();
   // std::chrono::duration<double, std::milli> elapsed = end - start;
   // std::cout << "Waited " << elapsed.count() << " ms\n";
+
+  chaser.Chase(args.chase_iterations_arg);
 
   // Serialize random string as Thrift
   auto compressed = compressPayload(this_thread.random_string, result);

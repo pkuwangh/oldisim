@@ -53,11 +53,13 @@ target_include_directories(icachebuster PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/ ${JE
 target_compile_features(icachebuster PRIVATE cxx_std_11)
 add_dependencies(icachebuster genicache)
 
+add_library(PointerChaser PointerChase.cc)
+target_compile_features(icachebuster PRIVATE cxx_std_11)
+
 
 # Build LeafNode binary
 add_executable(LeafNode
                LeafNode.cc
-               PointerChase.cc
                HistogramRandomSampler.cc)
 
 target_compile_features(LeafNode PRIVATE cxx_std_11)
@@ -65,7 +67,7 @@ target_include_directories(LeafNode
                            PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
                                   ${LIBEVENT_INCLUDE_DIR} ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(LeafNode
-                      PRIVATE OLDISim::OLDISim icachebuster leafnodecmdline
+                      PRIVATE OLDISim::OLDISim icachebuster PointerChaser leafnodecmdline
                       PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB})
 
 
