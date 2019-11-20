@@ -51,6 +51,7 @@ add_dependencies(leafNodeRankcmdline leafNodeRank_gengetopt)
 
 add_executable(LeafNodeRank
     LeafNodeRank.cc
+    TimekeeperPool.cpp
     ${RANKING_THRIFT_SRCS} ${RANKING_THRIFT_HDRS})
 target_include_directories(LeafNodeRank
     PUBLIC

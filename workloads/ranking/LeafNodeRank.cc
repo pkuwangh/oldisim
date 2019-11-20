@@ -40,6 +40,7 @@
 #include "LeafNodeRankCmdline.h"
 #include "RequestTypes.h"
 
+#include "TimekeeperPool.h"
 #include "dwarfs/pagerank.h"
 #include "gen-cpp/ranking_types.h"
 
@@ -59,6 +60,7 @@ const int kNumICacheBusterMethods = 100000;
 struct ThreadData {
   std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool;
   std::shared_ptr<folly::IOThreadPoolExecutor> ioThreadPool;
+  std::shared_ptr<ranking::TimekeeperPool> timekeeperPool;
   std::unique_ptr<ranking::dwarfs::PageRank> page_ranker;
   std::unique_ptr<ICacheBuster> icache_buster;
   std::default_random_engine rng;
@@ -70,11 +72,13 @@ void ThreadStartup(
     oldisim::NodeThread &thread, std::vector<ThreadData> &thread_data,
     ranking::dwarfs::PageRankParams &params,
     const std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool,
-    const std::shared_ptr<folly::IOThreadPoolExecutor> ioThreadPool) {
+    const std::shared_ptr<folly::IOThreadPoolExecutor> ioThreadPool,
+    const std::shared_ptr<ranking::TimekeeperPool> timekeeperPool) {
   auto &this_thread = thread_data[thread.get_thread_num()];
   auto graph = params.buildGraph();
   this_thread.cpuThreadPool = cpuThreadPool;
   this_thread.ioThreadPool = ioThreadPool;
+  this_thread.timekeeperPool = timekeeperPool;
   this_thread.page_ranker.reset(
       new ranking::dwarfs::PageRank{std::move(graph)});
   this_thread.icache_buster.reset(new ICacheBuster(kNumICacheBusterMethods));
@@ -126,7 +130,8 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   int result = std::move(f).get();
   // auto start = std::chrono::high_resolution_clock::now();
 
-  auto s = folly::futures::sleep(std::chrono::milliseconds(5))
+  auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
+  auto s = folly::futures::sleep(std::chrono::milliseconds(5), timekeeper.get())
                .via(this_thread.ioThreadPool.get())
                .thenValue([result](auto &&) { return result + 1; });
 
@@ -171,13 +176,15 @@ int main(int argc, char **argv) {
   auto ioThreadPool =
       std::make_shared<folly::IOThreadPoolExecutor>(args.io_threads_arg);
 
+  auto timekeeperPool = std::make_shared<ranking::TimekeeperPool>(args.timekeeper_threads_arg);
+
   std::vector<ThreadData> thread_data(args.threads_arg);
   ranking::dwarfs::PageRankParams params{args.graph_scale_arg,
                                          args.graph_degree_arg};
   oldisim::LeafNodeServer server(args.port_arg);
   server.SetThreadStartupCallback(
       std::bind(ThreadStartup, std::placeholders::_1, std::ref(thread_data),
-                std::ref(params), cpuThreadPool, ioThreadPool));
+                std::ref(params), cpuThreadPool, ioThreadPool, timekeeperPool));
   server.RegisterQueryCallback(
       ranking::kPageRankRequestType,
       std::bind(PageRankRequestHandler, std::placeholders::_1,
