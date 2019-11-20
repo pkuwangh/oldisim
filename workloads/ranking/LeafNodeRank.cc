@@ -18,13 +18,16 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <folly/Range.h>
 #include <folly/compression/Compression.h>
 #include <folly/compression/Counters.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/futures/Future.h>
+#include <folly/init/Init.h>
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/transport/TBufferTransports.h>
 
@@ -52,9 +55,10 @@ static const int kMaxResponseSize = 1 << 12;
 const int kNumNops = 6;
 const int kNumNopIterations = 60;
 const int kNumCompressIterations = 100;
-
+const int kNumICacheBusterMethods = 100000;
 struct ThreadData {
   std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool;
+  std::shared_ptr<folly::IOThreadPoolExecutor> ioThreadPool;
   std::unique_ptr<ranking::dwarfs::PageRank> page_ranker;
   std::unique_ptr<ICacheBuster> icache_buster;
   std::default_random_engine rng;
@@ -65,13 +69,15 @@ struct ThreadData {
 void ThreadStartup(
     oldisim::NodeThread &thread, std::vector<ThreadData> &thread_data,
     ranking::dwarfs::PageRankParams &params,
-    const std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool) {
+    const std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool,
+    const std::shared_ptr<folly::IOThreadPoolExecutor> ioThreadPool) {
   auto &this_thread = thread_data[thread.get_thread_num()];
   auto graph = params.buildGraph();
   this_thread.cpuThreadPool = cpuThreadPool;
+  this_thread.ioThreadPool = ioThreadPool;
   this_thread.page_ranker.reset(
       new ranking::dwarfs::PageRank{std::move(graph)});
-  this_thread.icache_buster.reset(new ICacheBuster(100000));
+  this_thread.icache_buster.reset(new ICacheBuster(kNumICacheBusterMethods));
 
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   this_thread.rng.seed(seed);
@@ -108,14 +114,26 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
                             std::vector<ThreadData> &thread_data) {
   auto &this_thread = thread_data[thread.get_thread_num()];
   int num_iterations = this_thread.latency_distribution(this_thread.rng);
+  ICacheBuster &buster = *this_thread.icache_buster;
   for (int i = 0; i < num_iterations; i++) {
-    this_thread.icache_buster->RunNextMethod();
+    buster.RunNextMethod();
   }
+
   auto f = folly::via(this_thread.cpuThreadPool.get(), [&this_thread]() {
     return this_thread.page_ranker->rank(args.graph_max_iters_arg, 1e-4);
   });
 
   int result = std::move(f).get();
+  // auto start = std::chrono::high_resolution_clock::now();
+
+  auto s = folly::futures::sleep(std::chrono::milliseconds(5))
+               .via(this_thread.ioThreadPool.get())
+               .thenValue([result](auto &&) { return result + 1; });
+
+  result = std::move(s).get();
+  // auto end = std::chrono::high_resolution_clock::now();
+  // std::chrono::duration<double, std::milli> elapsed = end - start;
+  // std::cout << "Waited " << elapsed.count() << " ms\n";
 
   // Serialize random string as Thrift
   auto compressed = compressPayload(this_thread.random_string, result);
@@ -144,16 +162,22 @@ int main(int argc, char **argv) {
   if (args.quiet_given) {
     log_level = QUIET;
   }
-
+  int fake_argc = 1;
+  char *fake_argv[2] = {(char *)"./LeafNodeRank", nullptr};
+  char **sargv = reinterpret_cast<char **>(fake_argv);
+  folly::init(&fake_argc, &sargv);
   auto cpuThreadPool =
       std::make_shared<folly::CPUThreadPoolExecutor>(args.cpu_threads_arg);
+  auto ioThreadPool =
+      std::make_shared<folly::IOThreadPoolExecutor>(args.io_threads_arg);
+
   std::vector<ThreadData> thread_data(args.threads_arg);
   ranking::dwarfs::PageRankParams params{args.graph_scale_arg,
                                          args.graph_degree_arg};
   oldisim::LeafNodeServer server(args.port_arg);
   server.SetThreadStartupCallback(
       std::bind(ThreadStartup, std::placeholders::_1, std::ref(thread_data),
-                std::ref(params), cpuThreadPool));
+                std::ref(params), cpuThreadPool, ioThreadPool));
   server.RegisterQueryCallback(
       ranking::kPageRankRequestType,
       std::bind(PageRankRequestHandler, std::placeholders::_1,
