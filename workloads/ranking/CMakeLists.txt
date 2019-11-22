@@ -88,7 +88,7 @@ target_link_libraries(LeafNodeRank
         ${LIBLZMA_LIBRARIES}
         ${THRIFT_SHARED_LIBRARY})
 target_compile_options(LeafNodeRank PUBLIC -fno-omit-frame-pointer)
-add_dependencies(LeafNodeRank folly)
+add_dependencies(LeafNodeRank folly ${RANKING_THRIFT_TGTS})
 
 
 # Generate getopts for ParentNodeRank
@@ -122,12 +122,34 @@ target_include_directories(
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/
            ${LIBEVENT_INCLUDE_DIR}
            ${JEMALLOC_INCLUDE_DIR}
-           ${THRIFT_INCLUDE_DIR})
+           ${BZIP2_INCLUDE_DIR}
+           ${ZSTD_INCLUDE_DIR}
+           ${LZ4_INCLUDE_DIR}
+           ${SNAPPY_INCLUDE_DIR}
+           ${LIBLZMA_INCLUDE_DIRS}
+           ${THRIFT_INCLUDE_DIR}
+           ${FOLLY_INCLUDE_DIR})
 target_link_libraries(
     ParentNodeRank
-    PRIVATE OLDISim::OLDISim parentNodeRankcmdline
-    PUBLIC Threads::Threads ${LIBEVENT_LIB} ${JEMALLOC_LIB} ${THRIFT_SHARED_LIBRARY})
-
+    PRIVATE
+        OLDISim::OLDISim
+        parentNodeRankcmdline
+        ${FOLLY_LIBRARIES}
+        ${CMAKE_DL_LIBS}
+        glog::glog
+        ${DOUBLE_CONVERSION_LIBRARY}
+    PUBLIC
+        Threads::Threads
+        ZLIB::ZLIB
+        ${BZIP2_LIBRARIES}
+        ${LZ4_LIBRARY}
+        ${ZSTD_LIBRARY}
+        ${SNAPPY_LIBRARY}
+        ${LIBLZMA_LIBRARIES}
+        ${LIBEVENT_LIB}
+        ${JEMALLOC_LIB}
+        ${THRIFT_SHARED_LIBRARY})
+add_dependencies(ParentNodeRank ${RANKING_THRIFT_TGTS})
 
 # Generate getops for DriverNodeRank
 add_custom_command(
