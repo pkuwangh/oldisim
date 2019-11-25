@@ -28,8 +28,8 @@
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/init/Init.h>
-#include <thrift/protocol/TBinaryProtocol.h>
-#include <thrift/transport/TBufferTransports.h>
+// #include <thrift/protocol/TBinaryProtocol.h>
+// #include <thrift/transport/TBufferTransports.h>
 
 #include "oldisim/LeafNodeServer.h"
 #include "oldisim/NodeThread.h"
@@ -42,13 +42,13 @@
 
 #include "TimekeeperPool.h"
 #include "dwarfs/pagerank.h"
-#include "gen-cpp2/ranking_types.h"
+#include "if/gen-cpp2/ranking_types.h"
 
 #include "../search/ICacheBuster.h"
 #include "../search/PointerChase.h"
 
-using apache::thrift::protocol::TBinaryProtocol;
-using apache::thrift::transport::TMemoryBuffer;
+// using apache::thrift::protocol::TBinaryProtocol;
+// using apache::thrift::transport::TMemoryBuffer;
 
 // Shared configuration flags
 static gengetopt_args_info args;
@@ -108,15 +108,15 @@ std::string compressPayload(const std::string &data, int result) {
   return std::move(compressed);
 }
 
-std::shared_ptr<TMemoryBuffer> serializePayload(const std::string &data) {
-  std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
-  std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
+// std::shared_ptr<TMemoryBuffer> serializePayload(const std::string &data) {
+//   std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
+//   std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
 
-  ranking::Payload payload;
-  payload.message = data;
-  payload.write(proto.get());
-  return strBuffer;
-}
+//   ranking::Payload payload;
+//   payload.message = data;
+//   payload.write(proto.get());
+//   return strBuffer;
+// }
 
 void PageRankRequestHandler(oldisim::NodeThread &thread,
                             oldisim::QueryContext &context,
@@ -155,13 +155,13 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
       this_thread.random_string.data(),
       std::min(args.max_response_size_arg,
                static_cast<int>(this_thread.random_string.size())));
-  auto strBuffer = serializePayload(fragment.str());
+  //auto strBuffer = serializePayload(fragment.str());
 
   // Get serialized data
   uint8_t *buf;
   uint32_t sz;
-  strBuffer->getBuffer(&buf, &sz);
-  context.SendResponse(buf, sz);
+  //strBuffer->getBuffer(&buf, &sz);
+  context.SendResponse(fragment.data(), fragment.size());
 }
 
 int main(int argc, char **argv) {

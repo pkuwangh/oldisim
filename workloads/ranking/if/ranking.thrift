@@ -1,4 +1,4 @@
-namespace cpp ranking
+namespace cpp2 ranking
 
 cpp_include "folly/small_vector.h"
 cpp_include "folly/container/F14Map.h"

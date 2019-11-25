@@ -1,6 +1,19 @@
 cmake_minimum_required(VERSION 3.12)
 project(oldisim_ranking)
 
+find_package(Boost 1.53.0
+    COMPONENTS
+        context
+        filesystem
+        program_options
+        coroutine
+        date_time
+        thread
+        system
+        regex
+    REQUIRED
+)
+find_package(OpenSSL REQUIRED)
 find_package(DoubleConversion REQUIRED)
 find_package(Glog REQUIRED)
 find_package(BZip2 REQUIRED)
@@ -11,16 +24,40 @@ find_package(Snappy REQUIRED)
 find_package(LibLZMA REQUIRED)
 find_program(GENGETOPT_EXECUTABLE gengetopt REQUIRED)
 
-thrift_library(ranking
-    ""
-    "cpp2"
-    "json"
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CMAKE_CURRENT_BINARY_DIR}"
-    ""
-)
-
+include(if/CMakeLists.txt)
 add_dependencies(ranking-cpp2-target fbthrift)
+set_target_properties(
+        ranking-cpp2-obj
+        PROPERTIES POSITION_INDEPENDENT_CODE True
+)
+target_include_directories(ranking-cpp2-obj
+    PUBLIC
+        ${FBTHRIFT_INCLUDE_DIR}
+        ${FOLLY_INCLUDE_DIR}
+)
+target_link_libraries(ranking-cpp2
+    Threads::Threads
+    ZLIB::ZLIB
+    Boost::boost
+    Boost::context
+    Boost::filesystem
+    Boost::program_options
+    Boost::regex
+    ${OPENSSL_LIBRARIES}
+    ${BZIP2_LIBRARIES}
+    ${LZ4_LIBRARY}
+    ${ZSTD_LIBRARY}
+    ${SNAPPY_LIBRARY}
+    ${FOLLY_LIBRARIES}
+    ${LIBEVENT_LIB}
+    ${JEMALLOC_LIB}
+    ${LIBLZMA_LIBRARIES}
+    ${LIBSODIUM_LIBRARIES}
+    ${RSOCKET_LIBRARIES}
+    ${FIZZ_LIBRARIES}
+    ${WANGLE_LIBRARIES}
+    ${FBTHRIFT_LIBRARIES}
+)
 
 # Build Ranking Dwarfs library
 add_library(rankingDwarfs
@@ -55,30 +92,30 @@ add_dependencies(leafNodeRankcmdline leafNodeRank_gengetopt)
 add_executable(LeafNodeRank
     LeafNodeRank.cc
     TimekeeperPool.cpp
-    #${RANKING_THRIFT_SRCS}
-    #${RANKING_THRIFT_HDRS}
-    )
+)
 target_include_directories(LeafNodeRank
     PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}
         ${LIBEVENT_INCLUDE_DIR}
         ${JEMALLOC_INCLUDE_DIR}
-        ${THRIFT_INCLUDE_DIR}
         ${BZIP2_INCLUDE_DIR}
         ${ZSTD_INCLUDE_DIR}
         ${LZ4_INCLUDE_DIR}
         ${SNAPPY_INCLUDE_DIR}
         ${LIBLZMA_INCLUDE_DIRS}
-        ${FOLLY_INCLUDE_DIR})
+        ${FOLLY_INCLUDE_DIR}
+        ${FBTHRIFT_INCLUDE_DIR}
+)
+
 target_link_libraries(LeafNodeRank
     PRIVATE
         OLDISim::OLDISim
-        ranking-cpp2
         leafNodeRankcmdline
         rankingDwarfs
         icachebuster
         PointerChaser
         ${FOLLY_LIBRARIES}
+        ranking-cpp2
         ${CMAKE_DL_LIBS}
         glog::glog
         ${DOUBLE_CONVERSION_LIBRARY}
@@ -92,9 +129,8 @@ target_link_libraries(LeafNodeRank
         ${LIBEVENT_LIB}
         ${JEMALLOC_LIB}
         ${LIBLZMA_LIBRARIES}
-        ${THRIFT_SHARED_LIBRARY})
+)
 target_compile_options(LeafNodeRank PUBLIC -fno-omit-frame-pointer)
-#add_dependencies(LeafNodeRank folly ${RANKING_THRIFT_TGTS})
 
 
 # Generate getopts for ParentNodeRank
@@ -122,28 +158,28 @@ add_dependencies(parentNodeRankcmdline parentNodeRank_gengetopt)
 # Build ParentNodeRank binary
 add_executable(ParentNodeRank
                ParentNodeRank.cc
-               #${RANKING_THRIFT_SRCS}
-               #${RANKING_THRIFT_HDRS}
 )
 target_include_directories(
     ParentNodeRank
-    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/
-           ${LIBEVENT_INCLUDE_DIR}
-           ${JEMALLOC_INCLUDE_DIR}
-           ${BZIP2_INCLUDE_DIR}
-           ${ZSTD_INCLUDE_DIR}
-           ${LZ4_INCLUDE_DIR}
-           ${SNAPPY_INCLUDE_DIR}
-           ${LIBLZMA_INCLUDE_DIRS}
-           ${THRIFT_INCLUDE_DIR}
-           ${FOLLY_INCLUDE_DIR})
+    PUBLIC
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${LIBEVENT_INCLUDE_DIR}
+        ${JEMALLOC_INCLUDE_DIR}
+        ${BZIP2_INCLUDE_DIR}
+        ${ZSTD_INCLUDE_DIR}
+        ${LZ4_INCLUDE_DIR}
+        ${SNAPPY_INCLUDE_DIR}
+        ${LIBLZMA_INCLUDE_DIRS}
+        ${FOLLY_INCLUDE_DIR}
+        ${FBTHRIFT_INCLUDE_DIR}
+)
 target_link_libraries(
     ParentNodeRank
     PRIVATE
         OLDISim::OLDISim
-        ranking-cpp2
-        parentNodeRankcmdline
         ${FOLLY_LIBRARIES}
+        parentNodeRankcmdline
+        ranking-cpp2
         ${CMAKE_DL_LIBS}
         glog::glog
         ${DOUBLE_CONVERSION_LIBRARY}
@@ -157,8 +193,8 @@ target_link_libraries(
         ${LIBLZMA_LIBRARIES}
         ${LIBEVENT_LIB}
         ${JEMALLOC_LIB}
-        ${THRIFT_SHARED_LIBRARY})
-#add_dependencies(ParentNodeRank ${RANKING_THRIFT_TGTS})
+        ${FBTHRIFT_LIBRARIES}
+)
 
 # Generate getops for DriverNodeRank
 add_custom_command(

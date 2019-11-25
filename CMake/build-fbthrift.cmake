@@ -24,6 +24,18 @@ ExternalProject_Add(fbthrift
     BUILD_BYPRODUCTS
         <INSTALL_DIR>/lib/libthriftcpp2.a
         <INSTALL_DIR>/bin/thrift1
+        <INSTALL_DIR>/lib/libprotocol.a
+        <INSTALL_DIR>/lib/libcompiler_ast.a
+        <INSTALL_DIR>/lib/libtransport.a
+        <INSTALL_DIR>/lib/libthriftfrozen2.a
+        <INSTALL_DIR>/lib/libcompiler_generators.a
+        <INSTALL_DIR>/lib/libcompiler_lib.a
+        <INSTALL_DIR>/lib/libmustache_lib.a
+        <INSTALL_DIR>/lib/libasync.a
+        <INSTALL_DIR>/lib/libthrift-core.a
+        <INSTALL_DIR>/lib/libcompiler_base.a
+        <INSTALL_DIR>/lib/libthriftprotocol.a
+        <INSTALL_DIR>/lib/libconcurrency.a
     )
 
 ExternalProject_Add_StepDependencies(fbthrift configure folly wangle rsocket fmt)
@@ -53,7 +65,7 @@ set(FBTHRIFT_LIBRARIES
 )
 
 set(FBTHRIFT_INCLUDE_DIR
-    ${FBTHRIFT_ROOT_DIR} ${INSTALL_DIR})
+    ${FBTHRIFT_ROOT_DIR} ${INSTALL_DIR}/include)
 message(STATUS "FBThrift Library: ${FBTHRIFT_LIBRARIES}")
 message(STATUS "FBThrift Includes: ${FBTHRIFT_INCLUDE_DIR}")
 message("FBThrift Compiler: ${THRIFT1}")
