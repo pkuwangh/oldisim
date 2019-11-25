@@ -9,6 +9,9 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
 
+find_package(Threads REQUIRED)
+find_package(LibEvent REQUIRED)
+
 add_compile_options(-fno-omit-frame-pointer)
 add_link_options(-fno-omit-frame-pointer)
 find_library(JEMALLOC_LIB NAMES jemalloc REQUIRED)
@@ -41,8 +44,6 @@ else()
   add_definitions(-DNO_JEMALLOC=1)
 endif()
 
-find_package(Threads REQUIRED)
-find_package(LibEvent REQUIRED)
 
 # Pull submodules
 if(DEFINED ENV{HTTP_PROXY})
@@ -66,6 +67,16 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
         endif()
     endif()
 endif()
+
+include(build-config)
+include(build-fmt)
+include(build-folly)
+include(build-fizz)
+include(build-wangle)
+include(build-rsocket)
+include(build-fbthrift)
+include(${oldisim_SOURCE_DIR}/third_party/fbthrift/ThriftLibrary.cmake)
+
 
 add_subdirectory(third_party)
 add_subdirectory(oldisim)

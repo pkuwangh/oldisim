@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 project(oldisim_ranking)
 
-include(build-folly)
-
 find_package(DoubleConversion REQUIRED)
 find_package(Glog REQUIRED)
 find_package(BZip2 REQUIRED)
@@ -11,13 +9,18 @@ find_package(Zstd REQUIRED)
 find_package(LZ4 REQUIRED)
 find_package(Snappy REQUIRED)
 find_package(LibLZMA REQUIRED)
-find_package(Thrift REQUIRED)
 find_program(GENGETOPT_EXECUTABLE gengetopt REQUIRED)
 
-THRIFT_GENERATE_CPP(RANKING_THRIFT_SRCS RANKING_THRIFT_HDRS RANKING_THRIFT_TGTS
-    SOURCE_ROOT gen-cpp/
-    BINARY_ROOT gen-cpp/
-    THRIFT_FILES ranking.thrift)
+thrift_library(ranking
+    ""
+    "cpp2"
+    "json"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_BINARY_DIR}"
+    ""
+)
+
+add_dependencies(ranking-cpp2-target fbthrift)
 
 # Build Ranking Dwarfs library
 add_library(rankingDwarfs
@@ -52,7 +55,9 @@ add_dependencies(leafNodeRankcmdline leafNodeRank_gengetopt)
 add_executable(LeafNodeRank
     LeafNodeRank.cc
     TimekeeperPool.cpp
-    ${RANKING_THRIFT_SRCS} ${RANKING_THRIFT_HDRS})
+    #${RANKING_THRIFT_SRCS}
+    #${RANKING_THRIFT_HDRS}
+    )
 target_include_directories(LeafNodeRank
     PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}
@@ -68,6 +73,7 @@ target_include_directories(LeafNodeRank
 target_link_libraries(LeafNodeRank
     PRIVATE
         OLDISim::OLDISim
+        ranking-cpp2
         leafNodeRankcmdline
         rankingDwarfs
         icachebuster
@@ -88,7 +94,7 @@ target_link_libraries(LeafNodeRank
         ${LIBLZMA_LIBRARIES}
         ${THRIFT_SHARED_LIBRARY})
 target_compile_options(LeafNodeRank PUBLIC -fno-omit-frame-pointer)
-add_dependencies(LeafNodeRank folly ${RANKING_THRIFT_TGTS})
+#add_dependencies(LeafNodeRank folly ${RANKING_THRIFT_TGTS})
 
 
 # Generate getopts for ParentNodeRank
@@ -116,7 +122,9 @@ add_dependencies(parentNodeRankcmdline parentNodeRank_gengetopt)
 # Build ParentNodeRank binary
 add_executable(ParentNodeRank
                ParentNodeRank.cc
-               ${RANKING_THRIFT_SRCS} ${RANKING_THRIFT_HDRS})
+               #${RANKING_THRIFT_SRCS}
+               #${RANKING_THRIFT_HDRS}
+)
 target_include_directories(
     ParentNodeRank
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/
@@ -133,6 +141,7 @@ target_link_libraries(
     ParentNodeRank
     PRIVATE
         OLDISim::OLDISim
+        ranking-cpp2
         parentNodeRankcmdline
         ${FOLLY_LIBRARIES}
         ${CMAKE_DL_LIBS}
@@ -149,7 +158,7 @@ target_link_libraries(
         ${LIBEVENT_LIB}
         ${JEMALLOC_LIB}
         ${THRIFT_SHARED_LIBRARY})
-add_dependencies(ParentNodeRank ${RANKING_THRIFT_TGTS})
+#add_dependencies(ParentNodeRank ${RANKING_THRIFT_TGTS})
 
 # Generate getops for DriverNodeRank
 add_custom_command(

@@ -4,8 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-set(FOLLY_ROOT_DIR ${CMAKE_SOURCE_DIR}/third_party/folly)
-set(FOLLY_STAGING_DIR "${CMAKE_BINARY_DIR}/staging/folly")
+set(FOLLY_ROOT_DIR ${oldisim_SOURCE_DIR}/third_party/folly)
 
 include(ExternalProject)
 
@@ -16,26 +15,31 @@ endif()
 
 ExternalProject_Add(folly
     SOURCE_DIR "${FOLLY_ROOT_DIR}"
+    BUILD_ALWAYS OFF
     DOWNLOAD_COMMAND ""
-    CMAKE_ARGS -DCMAKE_POSITION_INDEPENDENT_CODE=True -DCXX_STD=gnu++17
-       -DCMAKE_CXX_STANDARD=17 -DCMAKE_INSTALL_PREFIX=${FOLLY_STAGING_DIR}
-       ${_folly_cmake_extra_opts}
-    INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
-    BINARY_DIR ${CMAKE_BINARY_DIR}/third_party/folly
-    BUILD_BYPRODUCTS ${FOLLY_STAGING_DIR}/lib/libfolly.a
+    INSTALL_DIR ${OLDISIM_STAGING_DIR}
+    CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE:STRING=Release
+        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=True
+        -DCXX_STD:STRING=gnu++17
+        -DCMAKE_CXX_STANDARD:STRING=17
+        -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+    BINARY_DIR ${oldisim_BINARY_DIR}/third_party/folly
+    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libfolly.a
     )
+add_dependencies(folly fmt)
 
 ExternalProject_Get_Property(folly SOURCE_DIR)
-ExternalProject_Get_Property(folly BINARY_DIR)
+ExternalProject_Get_Property(folly INSTALL_DIR)
 
 set(FOLLY_LIBRARIES
-    ${FOLLY_STAGING_DIR}/lib/libfolly.a)
+    ${INSTALL_DIR}/lib/libfolly.a)
 set(FOLLY_BENCHMARK_LIBRARIES
-    ${FOLLY_STAGING_DIR}/lib/folly/libfollybenchmark.a)
+    ${INSTALL_DIR}/lib/folly/libfollybenchmark.a)
 set(FOLLY_TEST_UTIL_LIBRARIES
-    ${FOLLY_STAGING_DIR}/lib/libfolly_test_util.a)
+    ${INSTALL_DIR}/lib/libfolly_test_util.a)
 
-set(FOLLY_INCLUDE_DIR ${FOLLY_STAGING_DIR}/include)
+set(FOLLY_INCLUDE_DIR ${INSTALL_DIR}/include)
 message(STATUS "Folly Library: ${FOLLY_LIBRARIES}")
 message(STATUS "Folly Benchmark: ${FOLLY_BENCHMARK_LIBRARIES}")
 message(STATUS "Folly Includes: ${FOLLY_INCLUDE_DIR}")

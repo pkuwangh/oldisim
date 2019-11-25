@@ -30,7 +30,7 @@
 #include "ParentNodeRankCmdline.h"
 #include "RequestTypes.h"
 
-#include "gen-cpp/ranking_types.h"
+#include "gen-cpp2/ranking_types.h"
 #include "utils.h"
 
 using apache::thrift::protocol::TBinaryProtocol;

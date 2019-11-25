@@ -42,7 +42,7 @@
 
 #include "TimekeeperPool.h"
 #include "dwarfs/pagerank.h"
-#include "gen-cpp/ranking_types.h"
+#include "gen-cpp2/ranking_types.h"
 
 #include "../search/ICacheBuster.h"
 #include "../search/PointerChase.h"

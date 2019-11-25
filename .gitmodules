@@ -7,3 +7,18 @@
 [submodule "third_party/folly"]
 	path = third_party/folly
 	url = https://github.com/facebook/folly.git
+[submodule "third_party/fbthrift"]
+	path = third_party/fbthrift
+	url = https://github.com/facebook/fbthrift.git
+[submodule "third_party/rsocket-cpp"]
+	path = third_party/rsocket-cpp
+	url = https://github.com/rsocket/rsocket-cpp.git
+[submodule "third_party/fmt"]
+	path = third_party/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "third_party/fizz"]
+	path = third_party/fizz
+	url = https://github.com/facebookincubator/fizz.git
+[submodule "third_party/wangle"]
+	path = third_party/wangle
+	url = https://github.com/facebook/wangle.git

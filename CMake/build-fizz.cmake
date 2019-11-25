@@ -1,0 +1,42 @@
+
+# Copyright (c) 2018-present, Facebook, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+set(FIZZ_ROOT_DIR ${oldisim_SOURCE_DIR}/third_party/fizz/fizz)
+
+include(ExternalProject)
+
+ExternalProject_Add(fizz
+    PREFIX fizz
+    SOURCE_DIR "${FIZZ_ROOT_DIR}"
+    BUILD_ALWAYS OFF
+    DOWNLOAD_COMMAND ""
+    INSTALL_DIR ${OLDISIM_STAGING_DIR}
+    CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE:STRING=Release
+        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=True
+        -DCMAKE_PREFIX_PATH:PATH=<INSTALL_DIR>
+        -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+        -DBUILD_TESTS:BOOL=OFF
+    BINARY_DIR ${oldisim_BINARY_DIR}/third_party/fizz
+    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libfizz.a
+    )
+
+
+ExternalProject_Add_StepDependencies(fizz configure folly)
+
+ExternalProject_Get_Property(fizz SOURCE_DIR)
+ExternalProject_Get_Property(fizz INSTALL_DIR)
+
+set(FIZZ_LIBRARIES
+    ${INSTALL_DIR}/lib/libfizz.a)
+
+message(STATUS "Fizz Library: ${FIZZ_LIBRARIES}")
+
+mark_as_advanced(
+    FIZZ_ROOT_DIR
+    FIZZ_LIBRARIES
+)
