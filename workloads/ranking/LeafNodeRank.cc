@@ -28,6 +28,9 @@
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/init/Init.h>
+
+#include <thrift/lib/cpp2/protocol/CompactProtocol.h>
+#include <thrift/lib/cpp2/protocol/Serializer.h>
 // #include <thrift/protocol/TBinaryProtocol.h>
 // #include <thrift/transport/TBufferTransports.h>
 
@@ -42,6 +45,7 @@
 
 #include "TimekeeperPool.h"
 #include "dwarfs/pagerank.h"
+
 #include "if/gen-cpp2/ranking_types.h"
 
 #include "../search/ICacheBuster.h"
@@ -108,15 +112,15 @@ std::string compressPayload(const std::string &data, int result) {
   return std::move(compressed);
 }
 
-// std::shared_ptr<TMemoryBuffer> serializePayload(const std::string &data) {
-//   std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
-//   std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
+folly::IOBufQueue serializePayload(const std::string &data) {
+  ranking::Payload payload;
+  payload.message = data;
 
-//   ranking::Payload payload;
-//   payload.message = data;
-//   payload.write(proto.get());
-//   return strBuffer;
-// }
+  apache::thrift::CompactSerializer ser;
+  folly::IOBufQueue bufq;
+  ser.serialize(payload, &bufq);
+  return std::move(bufq);
+}
 
 void PageRankRequestHandler(oldisim::NodeThread &thread,
                             oldisim::QueryContext &context,
@@ -124,7 +128,7 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   auto &this_thread = thread_data[thread.get_thread_num()];
   int num_iterations = this_thread.latency_distribution(this_thread.rng);
   ICacheBuster &buster = *this_thread.icache_buster;
-  search::PointerChase& chaser = *this_thread.pointer_chaser;
+  search::PointerChase &chaser = *this_thread.pointer_chaser;
 
   for (int i = 0; i < num_iterations; i++) {
     buster.RunNextMethod();
@@ -140,7 +144,10 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
   auto s = folly::futures::sleep(std::chrono::milliseconds(5), timekeeper.get())
                .via(this_thread.ioThreadPool.get())
-               .thenValue([&](auto &&) { chaser.Chase(args.io_chase_iterations_arg); return result + 1; });
+               .thenValue([&](auto &&) {
+                 chaser.Chase(args.io_chase_iterations_arg);
+                 return result + 1;
+               });
 
   result = std::move(s).get();
   // auto end = std::chrono::high_resolution_clock::now();
@@ -155,13 +162,12 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
       this_thread.random_string.data(),
       std::min(args.max_response_size_arg,
                static_cast<int>(this_thread.random_string.size())));
-  //auto strBuffer = serializePayload(fragment.str());
 
-  // Get serialized data
-  uint8_t *buf;
-  uint32_t sz;
-  //strBuffer->getBuffer(&buf, &sz);
-  context.SendResponse(fragment.data(), fragment.size());
+  auto strIOBufQ = serializePayload(fragment.str());
+
+  const folly::IOBuf *strIOBuf = strIOBufQ.front();
+
+  context.SendResponse(strIOBuf->data(), strIOBuf->length());
 }
 
 int main(int argc, char **argv) {
@@ -185,7 +191,8 @@ int main(int argc, char **argv) {
   auto ioThreadPool =
       std::make_shared<folly::IOThreadPoolExecutor>(args.io_threads_arg);
 
-  auto timekeeperPool = std::make_shared<ranking::TimekeeperPool>(args.timekeeper_threads_arg);
+  auto timekeeperPool =
+      std::make_shared<ranking::TimekeeperPool>(args.timekeeper_threads_arg);
 
   std::vector<ThreadData> thread_data(args.threads_arg);
   ranking::dwarfs::PageRankParams params{args.graph_scale_arg,

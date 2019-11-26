@@ -57,6 +57,7 @@ target_link_libraries(ranking-cpp2
     ${FIZZ_LIBRARIES}
     ${WANGLE_LIBRARIES}
     ${FBTHRIFT_LIBRARIES}
+    ${FMT_LIBRARIES}
 )
 
 # Build Ranking Dwarfs library
