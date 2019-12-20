@@ -60,6 +60,15 @@ target_link_libraries(ranking-cpp2
     ${FMT_LIBRARIES}
 )
 
+# Ranking Thrift data generators
+add_library(rankingThriftDataGen INTERFACE)
+target_include_directories(rankingThriftDataGen INTERFACE
+    generators/
+)
+target_link_libraries(rankingThriftDataGen
+    INTERFACE ranking-cpp2
+)
+
 # Build Ranking Dwarfs library
 add_library(rankingDwarfs
     dwarfs/pagerank.cpp
@@ -117,6 +126,7 @@ target_link_libraries(LeafNodeRank
         PointerChaser
         ${FOLLY_LIBRARIES}
         ranking-cpp2
+        rankingThriftDataGen
         ${CMAKE_DL_LIBS}
         glog::glog
         ${DOUBLE_CONVERSION_LIBRARY}

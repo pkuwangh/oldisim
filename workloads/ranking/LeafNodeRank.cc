@@ -31,8 +31,6 @@
 
 #include <thrift/lib/cpp2/protocol/CompactProtocol.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
-// #include <thrift/protocol/TBinaryProtocol.h>
-// #include <thrift/transport/TBufferTransports.h>
 
 #include "oldisim/LeafNodeServer.h"
 #include "oldisim/NodeThread.h"
@@ -51,8 +49,7 @@
 #include "../search/ICacheBuster.h"
 #include "../search/PointerChase.h"
 
-// using apache::thrift::protocol::TBinaryProtocol;
-// using apache::thrift::transport::TMemoryBuffer;
+#include "generators/RankingGenerators.h"
 
 // Shared configuration flags
 static gengetopt_args_info args;
@@ -113,12 +110,14 @@ std::string compressPayload(const std::string &data, int result) {
 }
 
 folly::IOBufQueue serializePayload(const std::string &data) {
-  ranking::Payload payload;
-  payload.message = data;
+  //ranking::Payload payload; // = ranking::generators::generateRandomPayload(10);
+  //payload.message = data;
+
+  ranking::RankingResponse resp = ranking::generators::generateRandomRankingResponse(20);
 
   apache::thrift::CompactSerializer ser;
   folly::IOBufQueue bufq;
-  ser.serialize(payload, &bufq);
+  ser.serialize(resp, &bufq);
   return std::move(bufq);
 }
 

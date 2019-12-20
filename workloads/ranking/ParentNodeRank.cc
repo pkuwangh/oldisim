@@ -16,9 +16,6 @@
 #include <memory>
 #include <string>
 
-// #include <thrift/lib/cpp2/protocol/BinaryProtocol.h>
-// #include <thrift/lib/cpp2/transport/BufferTransports.h>
-
 #include "oldisim/FanoutManager.h"
 #include "oldisim/LeafNodeServer.h"
 #include "oldisim/NodeThread.h"
@@ -33,8 +30,6 @@
 #include "if/gen-cpp2/ranking_types.h"
 #include "utils.h"
 
-// using apache::thrift::protocol::TBinaryProtocol;
-// using apache::thrift::transport::TMemoryBuffer;
 
 static gengetopt_args_info args;
 
@@ -71,8 +66,6 @@ void PageRankRequestHandler(oldisim::NodeThread& thread,
                           std::vector<ThreadData>& thread_data) {
   ThreadData& this_thread = thread_data[thread.get_thread_num()];
 
-  // std::shared_ptr<TMemoryBuffer> strBuffer(new TMemoryBuffer());
-  // std::shared_ptr<TBinaryProtocol> proto(new TBinaryProtocol(strBuffer));
   // ranking::Payload payload;
   // payload.message = this_thread.random_string;
   // payload.write(proto.get());
