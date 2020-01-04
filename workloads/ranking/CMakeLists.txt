@@ -130,6 +130,7 @@ target_link_libraries(LeafNodeRank
         ${CMAKE_DL_LIBS}
         glog::glog
         ${DOUBLE_CONVERSION_LIBRARY}
+        ${FBTHRIFT_LIBRARIES}
     PUBLIC
         Threads::Threads
         ZLIB::ZLIB

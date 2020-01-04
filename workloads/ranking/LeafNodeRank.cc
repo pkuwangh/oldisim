@@ -109,16 +109,18 @@ std::string compressPayload(const std::string &data, int result) {
   return std::move(compressed);
 }
 
-folly::IOBufQueue serializePayload(const std::string &data) {
-  //ranking::Payload payload; // = ranking::generators::generateRandomPayload(10);
-  //payload.message = data;
-
-  ranking::RankingResponse resp = ranking::generators::generateRandomRankingResponse(20);
-
+folly::IOBufQueue serializePayload(const ranking::RankingResponse &resp) {
   apache::thrift::CompactSerializer ser;
   folly::IOBufQueue bufq;
   ser.serialize(resp, &bufq);
   return std::move(bufq);
+}
+
+ranking::RankingResponse deserializePayload(const folly::IOBuf *buf) {
+  apache::thrift::CompactSerializer ser;
+  ranking::RankingResponse resp;
+  ser.deserialize(buf, resp);
+  return resp;
 }
 
 void PageRankRequestHandler(oldisim::NodeThread &thread,
@@ -136,9 +138,7 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   auto f = folly::via(this_thread.cpuThreadPool.get(), [&this_thread]() {
     return this_thread.page_ranker->rank(args.graph_max_iters_arg, 1e-4);
   });
-
   int result = std::move(f).get();
-  // auto start = std::chrono::high_resolution_clock::now();
 
   auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
   auto s = folly::futures::sleep(std::chrono::milliseconds(5), timekeeper.get())
@@ -147,26 +147,26 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
                  chaser.Chase(args.io_chase_iterations_arg);
                  return result + 1;
                });
-
   result = std::move(s).get();
-  // auto end = std::chrono::high_resolution_clock::now();
-  // std::chrono::duration<double, std::milli> elapsed = end - start;
-  // std::cout << "Waited " << elapsed.count() << " ms\n";
 
   chaser.Chase(args.chase_iterations_arg);
 
   // Serialize random string as Thrift
   auto compressed = compressPayload(this_thread.random_string, result);
-  auto fragment = folly::StringPiece(
-      this_thread.random_string.data(),
-      std::min(args.max_response_size_arg,
-               static_cast<int>(this_thread.random_string.size())));
 
-  auto strIOBufQ = serializePayload(fragment.str());
+  // Generate a response
+  ranking::RankingResponse resp =
+      ranking::generators::generateRandomRankingResponse(20);
 
-  const folly::IOBuf *strIOBuf = strIOBufQ.front();
+  // Serialize into FBThrift
+  auto payloadIOBufQ = serializePayload(resp);
+  auto buf = payloadIOBufQ.move();
 
-  context.SendResponse(strIOBuf->data(), strIOBuf->length());
+  folly::futures::sleep(std::chrono::milliseconds(2), timekeeper.get()).get();
+
+  auto resp1 = deserializePayload(buf.get());
+
+  context.SendResponse(buf->data(), buf->length());
 }
 
 int main(int argc, char **argv) {
