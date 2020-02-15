@@ -8,6 +8,12 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--export-dynamic")
 
+find_program(CLANG_TIDY_COMMAND NAMES clang-tidy.par clang-tidy)
+if(CLANG_TIDY_COMMAND)
+    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND};-format-style=file")
+endif()
+
+
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
 
 find_package(Threads REQUIRED)
@@ -82,4 +88,3 @@ include(${oldisim_SOURCE_DIR}/third_party/fbthrift/ThriftLibrary.cmake)
 add_subdirectory(third_party)
 add_subdirectory(oldisim)
 add_subdirectory(workloads)
-

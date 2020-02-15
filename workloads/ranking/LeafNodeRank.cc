@@ -54,7 +54,7 @@
 // Shared configuration flags
 static gengetopt_args_info args;
 
-static const int kMaxResponseSize = 1 << 12;
+constexpr auto kMaxResponseSize = 1 << 12;
 const int kNumNops = 6;
 const int kNumNopIterations = 60;
 const int kNumCompressIterations = 100;
@@ -74,12 +74,13 @@ struct ThreadData {
 };
 
 void ThreadStartup(
-    oldisim::NodeThread &thread, std::vector<ThreadData> &thread_data,
-    ranking::dwarfs::PageRankParams &params,
+    oldisim::NodeThread& thread,
+    std::vector<ThreadData>& thread_data,
+    ranking::dwarfs::PageRankParams& params,
     const std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool,
     const std::shared_ptr<folly::IOThreadPoolExecutor> ioThreadPool,
     const std::shared_ptr<ranking::TimekeeperPool> timekeeperPool) {
-  auto &this_thread = thread_data[thread.get_thread_num()];
+  auto& this_thread = thread_data[thread.get_thread_num()];
   auto graph = params.buildGraph();
   this_thread.cpuThreadPool = cpuThreadPool;
   this_thread.ioThreadPool = ioThreadPool;
@@ -100,7 +101,7 @@ void ThreadStartup(
   this_thread.random_string = RandomString(args.random_data_size_arg);
 }
 
-std::string compressPayload(const std::string &data, int result) {
+std::string compressPayload(const std::string& data, int result) {
   folly::StringPiece output(
       data.data(),
       std::min(args.compression_data_size_arg, args.random_data_size_arg));
@@ -109,27 +110,28 @@ std::string compressPayload(const std::string &data, int result) {
   return std::move(compressed);
 }
 
-folly::IOBufQueue serializePayload(const ranking::RankingResponse &resp) {
+folly::IOBufQueue serializePayload(const ranking::RankingResponse& resp) {
   apache::thrift::CompactSerializer ser;
   folly::IOBufQueue bufq;
   ser.serialize(resp, &bufq);
   return std::move(bufq);
 }
 
-ranking::RankingResponse deserializePayload(const folly::IOBuf *buf) {
+ranking::RankingResponse deserializePayload(const folly::IOBuf* buf) {
   apache::thrift::CompactSerializer ser;
   ranking::RankingResponse resp;
   ser.deserialize(buf, resp);
   return resp;
 }
 
-void PageRankRequestHandler(oldisim::NodeThread &thread,
-                            oldisim::QueryContext &context,
-                            std::vector<ThreadData> &thread_data) {
-  auto &this_thread = thread_data[thread.get_thread_num()];
+void PageRankRequestHandler(
+    oldisim::NodeThread& thread,
+    oldisim::QueryContext& context,
+    std::vector<ThreadData>& thread_data) {
+  auto& this_thread = thread_data[thread.get_thread_num()];
   int num_iterations = this_thread.latency_distribution(this_thread.rng);
-  ICacheBuster &buster = *this_thread.icache_buster;
-  search::PointerChase &chaser = *this_thread.pointer_chaser;
+  ICacheBuster& buster = *this_thread.icache_buster;
+  search::PointerChase& chaser = *this_thread.pointer_chaser;
 
   for (int i = 0; i < num_iterations; i++) {
     buster.RunNextMethod();
@@ -143,7 +145,7 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
   auto s = folly::futures::sleep(std::chrono::milliseconds(5), timekeeper.get())
                .via(this_thread.ioThreadPool.get())
-               .thenValue([&](auto &&) {
+               .thenValue([&](auto&&) {
                  chaser.Chase(args.io_chase_iterations_arg);
                  return result + 1;
                });
@@ -169,7 +171,7 @@ void PageRankRequestHandler(oldisim::NodeThread &thread,
   context.SendResponse(buf->data(), buf->length());
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   if (cmdline_parser(argc, argv, &args) != 0) {
     DIE("cmdline_parser failed");
   }
@@ -182,8 +184,8 @@ int main(int argc, char **argv) {
     log_level = QUIET;
   }
   int fake_argc = 1;
-  char *fake_argv[2] = {(char *)"./LeafNodeRank", nullptr};
-  char **sargv = reinterpret_cast<char **>(fake_argv);
+  char* fake_argv[2] = {(char*)"./LeafNodeRank", nullptr};
+  char** sargv = reinterpret_cast<char**>(fake_argv);
   folly::init(&fake_argc, &sargv);
   auto cpuThreadPool =
       std::make_shared<folly::CPUThreadPoolExecutor>(args.cpu_threads_arg);
@@ -197,13 +199,21 @@ int main(int argc, char **argv) {
   ranking::dwarfs::PageRankParams params{args.graph_scale_arg,
                                          args.graph_degree_arg};
   oldisim::LeafNodeServer server(args.port_arg);
-  server.SetThreadStartupCallback(
-      std::bind(ThreadStartup, std::placeholders::_1, std::ref(thread_data),
-                std::ref(params), cpuThreadPool, ioThreadPool, timekeeperPool));
+  server.SetThreadStartupCallback(std::bind(
+      ThreadStartup,
+      std::placeholders::_1,
+      std::ref(thread_data),
+      std::ref(params),
+      cpuThreadPool,
+      ioThreadPool,
+      timekeeperPool));
   server.RegisterQueryCallback(
       ranking::kPageRankRequestType,
-      std::bind(PageRankRequestHandler, std::placeholders::_1,
-                std::placeholders::_2, std::ref(thread_data)));
+      std::bind(
+          PageRankRequestHandler,
+          std::placeholders::_1,
+          std::placeholders::_2,
+          std::ref(thread_data)));
   server.SetNumThreads(args.threads_arg);
   server.SetThreadPinning(!args.noaffinity_given);
   server.SetThreadLoadBalancing(!args.noloadbalance_given);
