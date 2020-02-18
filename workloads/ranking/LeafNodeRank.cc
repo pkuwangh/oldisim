@@ -54,12 +54,15 @@
 // Shared configuration flags
 static gengetopt_args_info args;
 
-constexpr auto kMaxResponseSize = 1 << 12;
-const int kNumNops = 6;
-const int kNumNopIterations = 60;
-const int kNumCompressIterations = 100;
-const int kNumICacheBusterMethods = 100000;
-const int kPointerChaseSize = 10000000;
+constexpr auto kMaxResponseSize = 1u << 12u;
+const auto kNumNops = 6;
+const auto kNumNopIterations = 60;
+const auto kNumCompressIterations = 100;
+const auto kNumICacheBusterMethods = 100000;
+const auto kPointerChaseSize = 10000000;
+const auto kPageRankThreshold = 1e-4;
+const auto kNumRankingStories = 20;
+const auto kIOThreadSleepMillis = 5;
 
 struct ThreadData {
   std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool;
@@ -77,18 +80,20 @@ void ThreadStartup(
     oldisim::NodeThread& thread,
     std::vector<ThreadData>& thread_data,
     ranking::dwarfs::PageRankParams& params,
-    const std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool,
-    const std::shared_ptr<folly::IOThreadPoolExecutor> ioThreadPool,
-    const std::shared_ptr<ranking::TimekeeperPool> timekeeperPool) {
+    const std::shared_ptr<folly::CPUThreadPoolExecutor>& cpuThreadPool,
+    const std::shared_ptr<folly::IOThreadPoolExecutor>& ioThreadPool,
+    const std::shared_ptr<ranking::TimekeeperPool>& timekeeperPool) {
   auto& this_thread = thread_data[thread.get_thread_num()];
   auto graph = params.buildGraph();
   this_thread.cpuThreadPool = cpuThreadPool;
   this_thread.ioThreadPool = ioThreadPool;
   this_thread.timekeeperPool = timekeeperPool;
-  this_thread.page_ranker.reset(
-      new ranking::dwarfs::PageRank{std::move(graph)});
-  this_thread.icache_buster.reset(new ICacheBuster(kNumICacheBusterMethods));
-  this_thread.pointer_chaser.reset(new search::PointerChase(kPointerChaseSize));
+  this_thread.page_ranker =
+      std::make_unique<ranking::dwarfs::PageRank>(std::move(graph));
+  this_thread.icache_buster =
+      std::make_unique<ICacheBuster>(kNumICacheBusterMethods);
+  this_thread.pointer_chaser =
+      std::make_unique<search::PointerChase>(kPointerChaseSize);
 
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   this_thread.rng.seed(seed);
@@ -111,16 +116,14 @@ std::string compressPayload(const std::string& data, int result) {
 }
 
 folly::IOBufQueue serializePayload(const ranking::RankingResponse& resp) {
-  apache::thrift::CompactSerializer ser;
   folly::IOBufQueue bufq;
-  ser.serialize(resp, &bufq);
+  apache::thrift::CompactSerializer::serialize(resp, &bufq);
   return std::move(bufq);
 }
 
 ranking::RankingResponse deserializePayload(const folly::IOBuf* buf) {
-  apache::thrift::CompactSerializer ser;
   ranking::RankingResponse resp;
-  ser.deserialize(buf, resp);
+  apache::thrift::CompactSerializer::deserialize(buf, resp);
   return resp;
 }
 
@@ -129,7 +132,8 @@ void PageRankRequestHandler(
     oldisim::QueryContext& context,
     std::vector<ThreadData>& thread_data) {
   auto& this_thread = thread_data[thread.get_thread_num()];
-  int num_iterations = this_thread.latency_distribution(this_thread.rng);
+  int num_iterations =
+      static_cast<int>(this_thread.latency_distribution(this_thread.rng));
   ICacheBuster& buster = *this_thread.icache_buster;
   search::PointerChase& chaser = *this_thread.pointer_chaser;
 
@@ -138,17 +142,20 @@ void PageRankRequestHandler(
   }
 
   auto f = folly::via(this_thread.cpuThreadPool.get(), [&this_thread]() {
-    return this_thread.page_ranker->rank(args.graph_max_iters_arg, 1e-4);
+    return this_thread.page_ranker->rank(
+        args.graph_max_iters_arg, kPageRankThreshold);
   });
   int result = std::move(f).get();
 
   auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
-  auto s = folly::futures::sleep(std::chrono::milliseconds(5), timekeeper.get())
-               .via(this_thread.ioThreadPool.get())
-               .thenValue([&](auto&&) {
-                 chaser.Chase(args.io_chase_iterations_arg);
-                 return result + 1;
-               });
+  auto s =
+      folly::futures::sleep(
+          std::chrono::milliseconds(kIOThreadSleepMillis), timekeeper.get())
+          .via(this_thread.ioThreadPool.get())
+          .thenValue([&](auto&& _) {
+            chaser.Chase(args.io_chase_iterations_arg);
+            return result + 1;
+          });
   result = std::move(s).get();
 
   chaser.Chase(args.chase_iterations_arg);
@@ -158,7 +165,7 @@ void PageRankRequestHandler(
 
   // Generate a response
   ranking::RankingResponse resp =
-      ranking::generators::generateRandomRankingResponse(20);
+      ranking::generators::generateRandomRankingResponse(kNumRankingStories);
 
   // Serialize into FBThrift
   auto payloadIOBufQ = serializePayload(resp);
@@ -173,19 +180,19 @@ void PageRankRequestHandler(
 
 int main(int argc, char** argv) {
   if (cmdline_parser(argc, argv, &args) != 0) {
-    DIE("cmdline_parser failed");
+    DIE("cmdline_parser failed"); // NOLINT
   }
 
   // Set logging level
   for (unsigned int i = 0; i < args.verbose_given; i++) {
     log_level = (log_level_t)(static_cast<int>(log_level) - 1);
   }
-  if (args.quiet_given) {
+  if (args.quiet_given != 0u) {
     log_level = QUIET;
   }
   int fake_argc = 1;
-  char* fake_argv[2] = {(char*)"./LeafNodeRank", nullptr};
-  char** sargv = reinterpret_cast<char**>(fake_argv);
+  char* fake_argv[2] = {const_cast<char*>("./LeafNodeRank"), nullptr};
+  char** sargv = static_cast<char**>(fake_argv);
   folly::init(&fake_argc, &sargv);
   auto cpuThreadPool =
       std::make_shared<folly::CPUThreadPoolExecutor>(args.cpu_threads_arg);
@@ -199,24 +206,23 @@ int main(int argc, char** argv) {
   ranking::dwarfs::PageRankParams params{args.graph_scale_arg,
                                          args.graph_degree_arg};
   oldisim::LeafNodeServer server(args.port_arg);
-  server.SetThreadStartupCallback(std::bind(
-      ThreadStartup,
-      std::placeholders::_1,
-      std::ref(thread_data),
-      std::ref(params),
-      cpuThreadPool,
-      ioThreadPool,
-      timekeeperPool));
+  server.SetThreadStartupCallback([&](auto&& thread) {
+    return ThreadStartup(
+        thread,
+        thread_data,
+        params,
+        cpuThreadPool,
+        ioThreadPool,
+        timekeeperPool);
+  });
   server.RegisterQueryCallback(
       ranking::kPageRankRequestType,
-      std::bind(
-          PageRankRequestHandler,
-          std::placeholders::_1,
-          std::placeholders::_2,
-          std::ref(thread_data)));
+      [&thread_data](auto&& thread, auto&& context) {
+        return PageRankRequestHandler(thread, context, thread_data);
+      });
   server.SetNumThreads(args.threads_arg);
-  server.SetThreadPinning(!args.noaffinity_given);
-  server.SetThreadLoadBalancing(!args.noloadbalance_given);
+  server.SetThreadPinning(args.noaffinity_given == 0u);
+  server.SetThreadLoadBalancing(args.noloadbalance_given == 0u);
 
   server.EnableMonitoring(args.monitor_port_arg);
 
