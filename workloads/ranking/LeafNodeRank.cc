@@ -115,6 +115,12 @@ std::string compressPayload(const std::string& data, int result) {
   return std::move(compressed);
 }
 
+std::string decompressPayload(const std::string &data) {
+  auto codec = folly::io::getCodec(folly::io::CodecType::ZSTD);
+  std::string decompressed = codec->uncompress(data);
+  return decompressed;
+}
+
 folly::IOBufQueue serializePayload(const ranking::RankingResponse& resp) {
   folly::IOBufQueue bufq;
   apache::thrift::CompactSerializer::serialize(resp, &bufq);
@@ -173,6 +179,7 @@ void PageRankRequestHandler(
 
   folly::futures::sleep(std::chrono::milliseconds(2), timekeeper.get()).get();
 
+  auto uncompressed = decompressPayload(compressed);
   auto resp1 = deserializePayload(buf.get());
 
   context.SendResponse(buf->data(), buf->length());
