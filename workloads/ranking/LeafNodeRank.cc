@@ -62,10 +62,11 @@ const auto kNumICacheBusterMethods = 100000;
 const auto kPointerChaseSize = 10000000;
 const auto kPageRankThreshold = 1e-4;
 const auto kNumRankingStories = 20;
-const auto kIOThreadSleepMillis = 5;
+const auto kIOThreadSleepMillis = 200;
 
 struct ThreadData {
   std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool;
+  std::shared_ptr<folly::CPUThreadPoolExecutor> srvCPUThreadPool;
   std::shared_ptr<folly::IOThreadPoolExecutor> ioThreadPool;
   std::shared_ptr<ranking::TimekeeperPool> timekeeperPool;
   std::unique_ptr<ranking::dwarfs::PageRank> page_ranker;
@@ -81,11 +82,13 @@ void ThreadStartup(
     std::vector<ThreadData>& thread_data,
     ranking::dwarfs::PageRankParams& params,
     const std::shared_ptr<folly::CPUThreadPoolExecutor>& cpuThreadPool,
+    const std::shared_ptr<folly::CPUThreadPoolExecutor>& srvCPUThreadPool,
     const std::shared_ptr<folly::IOThreadPoolExecutor>& ioThreadPool,
     const std::shared_ptr<ranking::TimekeeperPool>& timekeeperPool) {
   auto& this_thread = thread_data[thread.get_thread_num()];
   auto graph = params.buildGraph();
   this_thread.cpuThreadPool = cpuThreadPool;
+  this_thread.srvCPUThreadPool = srvCPUThreadPool;
   this_thread.ioThreadPool = ioThreadPool;
   this_thread.timekeeperPool = timekeeperPool;
   this_thread.page_ranker =
@@ -115,7 +118,7 @@ std::string compressPayload(const std::string& data, int result) {
   return std::move(compressed);
 }
 
-std::string decompressPayload(const std::string &data) {
+std::string decompressPayload(const std::string& data) {
   auto codec = folly::io::getCodec(folly::io::CodecType::ZSTD);
   std::string decompressed = codec->uncompress(data);
   return decompressed;
@@ -147,11 +150,16 @@ void PageRankRequestHandler(
     buster.RunNextMethod();
   }
 
-  auto f = folly::via(this_thread.cpuThreadPool.get(), [&this_thread]() {
-    return this_thread.page_ranker->rank(
-        args.graph_max_iters_arg, kPageRankThreshold);
-  });
-  int result = std::move(f).get();
+  std::vector<folly::Future<int>> futures;
+  for (int i = 0; i < args.cpu_threads_arg; i++) {
+    auto f = folly::via(this_thread.cpuThreadPool.get(), [&this_thread]() {
+      return this_thread.page_ranker->rank(
+          args.graph_max_iters_arg, kPageRankThreshold);
+    });
+    futures.push_back(std::move(f));
+  }
+  auto fs = folly::collect(futures).get();
+  int result = std::accumulate(fs.begin(), fs.end(), 0);
 
   auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
   auto s =
@@ -159,19 +167,28 @@ void PageRankRequestHandler(
           std::chrono::milliseconds(kIOThreadSleepMillis), timekeeper.get())
           .via(this_thread.ioThreadPool.get())
           .thenValue([&](auto&& _) {
+            // auto start = std::chrono::steady_clock::now();
             chaser.Chase(args.io_chase_iterations_arg);
+            // auto end = std::chrono::steady_clock::now();
+            // std::cout <<
+            // std::chrono::duration_cast<std::chrono::milliseconds>(
+            //                  end - start)
+            //                  .count()
+            //           << '\n';
             return result + 1;
           });
   result = std::move(s).get();
 
-  chaser.Chase(args.chase_iterations_arg);
-
   // Serialize random string as Thrift
   auto compressed = compressPayload(this_thread.random_string, result);
 
+  auto r = folly::via(this_thread.srvCPUThreadPool.get(), [&]() {
+    chaser.Chase(args.chase_iterations_arg);
+    return ranking::generators::generateRandomRankingResponse(
+        kNumRankingStories);
+  });
   // Generate a response
-  ranking::RankingResponse resp =
-      ranking::generators::generateRandomRankingResponse(kNumRankingStories);
+  ranking::RankingResponse resp = std::move(r).get();
 
   // Serialize into FBThrift
   auto payloadIOBufQ = serializePayload(resp);
@@ -203,6 +220,8 @@ int main(int argc, char** argv) {
   folly::init(&fake_argc, &sargv);
   auto cpuThreadPool =
       std::make_shared<folly::CPUThreadPoolExecutor>(args.cpu_threads_arg);
+  auto srvCPUThreadPool = std::make_shared<folly::CPUThreadPoolExecutor>(
+      15, std::make_shared<folly::NamedThreadFactory>("srvCPUThreadPool"));
   auto ioThreadPool =
       std::make_shared<folly::IOThreadPoolExecutor>(args.io_threads_arg);
 
@@ -219,6 +238,7 @@ int main(int argc, char** argv) {
         thread_data,
         params,
         cpuThreadPool,
+        srvCPUThreadPool,
         ioThreadPool,
         timekeeperPool);
   });

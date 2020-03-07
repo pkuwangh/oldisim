@@ -33,15 +33,21 @@
 namespace ranking {
 namespace dwarfs {
 
-struct PageRankParams::Impl {
-public:
-  Impl(std::unique_ptr<CLPageRankDummy> cli) : cli_{std::move(cli)} {
-    cli_->ParseArgs();
-    builder_.reset(new Builder(*cli_));
-  }
-  CSRGraph<int32_t> makeGraph() { return std::move(builder_->MakeGraph()); }
+constexpr auto kPageRankTrials = 10;
+constexpr auto kPageRankTolerance = 1e-4;
+constexpr auto kPageRankMaxIters = 20;
 
-private:
+struct PageRankParams::Impl {
+ public:
+  explicit Impl(std::unique_ptr<CLPageRankDummy> cli) : cli_{std::move(cli)} {
+    cli_->ParseArgs();
+    builder_ = std::make_unique<Builder>(*cli_);
+  }
+  CSRGraph<int32_t> makeGraph() {
+    return std::move(builder_->MakeGraph());
+  }
+
+ private:
   std::unique_ptr<Builder> builder_;
   std::unique_ptr<CLPageRankDummy> cli_;
 };
@@ -49,14 +55,21 @@ private:
 PageRankParams::PageRankParams(int scale, int degrees)
     : scale_(scale), degrees_(degrees) {
   auto scale_str = std::to_string(scale_);
-  std::unique_ptr<CLPageRankDummy> cli{
-      new CLPageRankDummy(scale, degrees, true, 1, 1e-4, 20)};
-  pimpl.reset(new Impl(std::move(cli)));
+  std::unique_ptr<CLPageRankDummy> cli{new CLPageRankDummy(
+      scale,
+      degrees,
+      true,
+      kPageRankTrials,
+      kPageRankTolerance,
+      kPageRankMaxIters)};
+  pimpl = std::make_unique<Impl>(std::move(cli));
 }
 
-PageRankParams::~PageRankParams(){};
+PageRankParams::~PageRankParams() = default;
 
-CSRGraph<int32_t> PageRankParams::buildGraph() { return pimpl->makeGraph(); }
+CSRGraph<int32_t> PageRankParams::buildGraph() {
+  return pimpl->makeGraph();
+}
 
 PageRank::PageRank(CSRGraph<int32_t> graph) : graph_(std::move(graph)) {}
 
@@ -64,31 +77,39 @@ PageRank::PageRank(CSRGraph<int32_t> graph) : graph_(std::move(graph)) {}
  * http://gap.cs.berkeley.edu/benchmark.html
  */
 int PageRank::rank(int max_iters, double epsilon) {
-  const float init_score = 1.0f / graph_.num_nodes();
-  const float base_score = (1.0f - kDamp) / graph_.num_nodes();
-  pvector<float> scores(graph_.num_nodes(), init_score);
-  pvector<float> outgoing_contrib(graph_.num_nodes());
-  int iter;
-  for (iter = 0; iter < max_iters; iter++) {
-    double error = 0;
+  std::vector<int> sizes;
+  for (int t = 0; t < kPageRankTrials; t++) {
+    const float init_score = 1.0f / graph_.num_nodes();
+    const float base_score = (1.0f - kDamp) / graph_.num_nodes();
+    pvector<float> scores(graph_.num_nodes(), init_score);
+    pvector<float> outgoing_contrib(graph_.num_nodes());
+    int iter;
+    for (iter = 0; iter < max_iters; iter++) {
+      double error = 0;
 
-#pragma omp parallel for
-    for (NodeID n = 0; n < graph_.num_nodes(); n++)
-      outgoing_contrib[n] = scores[n] / graph_.out_degree(n);
+      // #pragma omp parallel for
+      for (NodeID n = 0; n < graph_.num_nodes(); n++) {
+        outgoing_contrib[n] = scores[n] / graph_.out_degree(n);
+      }
 
-#pragma omp parallel for reduction(+ : error) schedule(dynamic, 64)
-    for (NodeID u = 0; u < graph_.num_nodes(); u++) {
-      float incoming_total = 0;
-      for (NodeID v : graph_.in_neigh(u))
-        incoming_total += outgoing_contrib[v];
-      float old_score = scores[u];
-      scores[u] = base_score + kDamp * incoming_total;
-      error += fabs(scores[u] - old_score);
+      // #pragma omp parallel for reduction(+ : error) schedule(dynamic, 64)
+      for (NodeID u = 0; u < graph_.num_nodes(); u++) {
+        float incoming_total = 0;
+        for (NodeID v : graph_.in_neigh(u)) {
+          incoming_total += outgoing_contrib[v];
+        }
+        float old_score = scores[u];
+        scores[u] = base_score + kDamp * incoming_total;
+        error += std::fabs(scores[u] - old_score);
+      }
+      if (error < epsilon) {
+        break;
+      }
     }
-    if (error < epsilon)
-      break;
+    sizes.push_back(scores.size());
   }
-  return scores.size();
+  // Dummy-value
+  return sizes.size();
 }
 
 } // namespace dwarfs
