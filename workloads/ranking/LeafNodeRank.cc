@@ -154,7 +154,7 @@ void PageRankRequestHandler(
   for (int i = 0; i < args.cpu_threads_arg; i++) {
     auto f = folly::via(this_thread.cpuThreadPool.get(), [&this_thread]() {
       return this_thread.page_ranker->rank(
-          args.graph_max_iters_arg, kPageRankThreshold);
+          args.graph_max_iters_arg, kPageRankThreshold, args.rank_trials_per_thread_arg);
     });
     futures.push_back(std::move(f));
   }
@@ -221,7 +221,7 @@ int main(int argc, char** argv) {
   auto cpuThreadPool =
       std::make_shared<folly::CPUThreadPoolExecutor>(args.cpu_threads_arg);
   auto srvCPUThreadPool = std::make_shared<folly::CPUThreadPoolExecutor>(
-      15, std::make_shared<folly::NamedThreadFactory>("srvCPUThreadPool"));
+      args.srv_threads_arg, std::make_shared<folly::NamedThreadFactory>("srvCPUThread"));
   auto ioThreadPool =
       std::make_shared<folly::IOThreadPoolExecutor>(args.io_threads_arg);
 

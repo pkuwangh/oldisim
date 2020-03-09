@@ -76,9 +76,9 @@ PageRank::PageRank(CSRGraph<int32_t> graph) : graph_(std::move(graph)) {}
 /** PageRank implementation taken from
  * http://gap.cs.berkeley.edu/benchmark.html
  */
-int PageRank::rank(int max_iters, double epsilon) {
+int PageRank::rank(int max_iters, double epsilon, int rank_trials) {
   std::vector<int> sizes;
-  for (int t = 0; t < kPageRankTrials; t++) {
+  for (int t = 0; t < rank_trials; t++) {
     const float init_score = 1.0f / graph_.num_nodes();
     const float base_score = (1.0f - kDamp) / graph_.num_nodes();
     pvector<float> scores(graph_.num_nodes(), init_score);
