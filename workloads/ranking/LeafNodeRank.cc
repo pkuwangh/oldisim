@@ -61,7 +61,6 @@ const auto kNumCompressIterations = 100;
 const auto kNumICacheBusterMethods = 100000;
 const auto kPointerChaseSize = 10000000;
 const auto kPageRankThreshold = 1e-4;
-const auto kNumRankingStories = 20;
 const auto kIOThreadSleepMillis = 200;
 
 struct ThreadData {
@@ -195,7 +194,7 @@ void PageRankRequestHandler(
   auto r = folly::via(this_thread.srvCPUThreadPool.get(), [&]() {
     chaser.Chase(args.chase_iterations_arg);
     return ranking::generators::generateRandomRankingResponse(
-        kNumRankingStories);
+        args.num_objects_arg);
   });
   // Generate a response
   ranking::RankingResponse resp = std::move(r).get();
