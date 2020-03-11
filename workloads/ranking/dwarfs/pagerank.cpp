@@ -24,6 +24,7 @@
 // EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pagerank.h"
+#include <algorithm>
 #include <iostream>
 #include <string>
 
@@ -76,13 +77,16 @@ PageRank::PageRank(CSRGraph<int32_t> graph) : graph_(std::move(graph)) {}
 /** PageRank implementation taken from
  * http://gap.cs.berkeley.edu/benchmark.html
  */
-int PageRank::rank(int max_iters, double epsilon, int rank_trials) {
+int PageRank::rank(int max_iters, double epsilon, int rank_trials, int subset) {
   std::vector<int> sizes;
   for (int t = 0; t < rank_trials; t++) {
     const float init_score = 1.0f / graph_.num_nodes();
     const float base_score = (1.0f - kDamp) / graph_.num_nodes();
     pvector<float> scores(graph_.num_nodes(), init_score);
     pvector<float> outgoing_contrib(graph_.num_nodes());
+    const int64_t num_nodes = subset > 0
+        ? std::min(static_cast<int64_t>(subset), graph_.num_nodes())
+        : graph_.num_nodes();
     int iter;
     for (iter = 0; iter < max_iters; iter++) {
       double error = 0;
@@ -93,7 +97,7 @@ int PageRank::rank(int max_iters, double epsilon, int rank_trials) {
       }
 
       // #pragma omp parallel for reduction(+ : error) schedule(dynamic, 64)
-      for (NodeID u = 0; u < graph_.num_nodes(); u++) {
+      for (NodeID u = 0; u < num_nodes; u++) {
         float incoming_total = 0;
         for (NodeID v : graph_.in_neigh(u)) {
           incoming_total += outgoing_contrib[v];
