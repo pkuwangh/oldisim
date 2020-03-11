@@ -150,20 +150,27 @@ void PageRankRequestHandler(
     buster.RunNextMethod();
   }
 
+  // auto start = std::chrono::steady_clock::now();
   std::vector<folly::Future<int>> futures;
   for (int i = 0; i < args.cpu_threads_arg; i++) {
-    auto f = folly::via(this_thread.cpuThreadPool.get(), [&this_thread]() {
-      return this_thread.page_ranker->rank(
-          args.graph_max_iters_arg,
-          kPageRankThreshold,
-          args.rank_trials_per_thread_arg,
-          args.graph_subset_arg);
-    });
+    auto f = folly::via(
+        this_thread.cpuThreadPool.get(), [&this_thread, num_iterations]() {
+          return this_thread.page_ranker->rank(
+              args.graph_max_iters_arg,
+              kPageRankThreshold,
+              args.rank_trials_per_thread_arg,
+              args.graph_subset_arg + num_iterations);
+        });
     futures.push_back(std::move(f));
   }
   auto fs = folly::collect(futures).get();
   int result = std::accumulate(fs.begin(), fs.end(), 0);
-
+  // auto end = std::chrono::steady_clock::now();
+  // auto duration =
+  //     std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+  //         .count();
+  // std::cout << duration
+  //           << '\n';
   auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
   auto s =
       folly::futures::sleep(
