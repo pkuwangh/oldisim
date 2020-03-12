@@ -61,7 +61,6 @@ const auto kNumCompressIterations = 100;
 const auto kNumICacheBusterMethods = 100000;
 const auto kPointerChaseSize = 10000000;
 const auto kPageRankThreshold = 1e-4;
-const auto kIOThreadSleepMillis = 200;
 
 struct ThreadData {
   std::shared_ptr<folly::CPUThreadPoolExecutor> cpuThreadPool;
@@ -173,7 +172,7 @@ void PageRankRequestHandler(
   auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
   auto s =
       folly::futures::sleep(
-          std::chrono::milliseconds(kIOThreadSleepMillis), timekeeper.get())
+          std::chrono::milliseconds(args.io_time_ms_arg), timekeeper.get())
           .via(this_thread.ioThreadPool.get())
           .thenValue([&](auto&& _) {
             // auto start = std::chrono::steady_clock::now();
