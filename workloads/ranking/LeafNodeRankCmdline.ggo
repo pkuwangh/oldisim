@@ -31,6 +31,7 @@ option "random_data_size" - "Number of bytes of string random data." int default
 option "max_response_size" - "Maximum response size in bytes returned by the leaf server." int default="131072"
 option "compression_data_size" - "Number of bytes to compress per request." int default="131072"
 option "rank_trials_per_thread" - "Number of iterations each CPU thread executes of rank work." int default="1"
+option "min_icache_iterations" - "At least this number of icache busting iteration will be executed." int default="0"
 option "chase_iterations" - "Number of chases to execute on handler thread." int default="5120"
 option "io_chase_iterations" - "Number of chases to execute on IO threads." int default="5120"
 option "io_time_ms" - "Milliseconds to sleep emualting I/O offcpu." int default="200"

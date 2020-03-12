@@ -139,8 +139,10 @@ void PageRankRequestHandler(
     oldisim::QueryContext& context,
     std::vector<ThreadData>& thread_data) {
   auto& this_thread = thread_data[thread.get_thread_num()];
-  int num_iterations =
-      static_cast<int>(this_thread.latency_distribution(this_thread.rng));
+  const int min_iterations = std::max(args.min_icache_iterations_arg, 0);
+  const int num_iterations =
+      static_cast<int>(this_thread.latency_distribution(this_thread.rng)) +
+      min_iterations;
   ICacheBuster& buster = *this_thread.icache_buster;
   search::PointerChase& chaser = *this_thread.pointer_chaser;
 
@@ -170,21 +172,20 @@ void PageRankRequestHandler(
   // std::cout << duration
   //           << '\n';
   auto timekeeper = this_thread.timekeeperPool->getTimekeeper();
-  auto s =
-      folly::futures::sleep(
-          std::chrono::milliseconds(args.io_time_ms_arg), timekeeper.get())
-          .via(this_thread.ioThreadPool.get())
-          .thenValue([&](auto&& _) {
-            // auto start = std::chrono::steady_clock::now();
-            chaser.Chase(args.io_chase_iterations_arg);
-            // auto end = std::chrono::steady_clock::now();
-            // std::cout <<
-            // std::chrono::duration_cast<std::chrono::milliseconds>(
-            //                  end - start)
-            //                  .count()
-            //           << '\n';
-            return result + 1;
-          });
+  auto s = folly::futures::sleep(
+               std::chrono::milliseconds(args.io_time_ms_arg), timekeeper.get())
+               .via(this_thread.ioThreadPool.get())
+               .thenValue([&](auto&& _) {
+                 // auto start = std::chrono::steady_clock::now();
+                 chaser.Chase(args.io_chase_iterations_arg);
+                 // auto end = std::chrono::steady_clock::now();
+                 // std::cout <<
+                 // std::chrono::duration_cast<std::chrono::milliseconds>(
+                 //                  end - start)
+                 //                  .count()
+                 //           << '\n';
+                 return result + 1;
+               });
   result = std::move(s).get();
 
   // Serialize random string as Thrift
