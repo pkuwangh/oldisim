@@ -1,0 +1,11 @@
+sudo yum install -y devtoolset-8-toolchain
+sudo yum install -y devtoolset-8-libatomic-devel
+sudo yum install -y cmake-3.14.2-1.fb1.el7.x86_64
+sudo yum install -y ninja-build
+sudo yum install -y flex
+sudo yum install -y bison
+sudo yum install -y git
+sudo yum install -y gengetopt
+sudo yum install -y libevent-devel
+
+scl enable devtoolset-8 bash

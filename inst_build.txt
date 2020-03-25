@@ -1,0 +1,50 @@
+# Boost
+http_proxy=fwdproxy:8080 https_proxy=fwdproxy:8080 wget https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.gz
+tar -xzvf boost_1_71_0.tar.gz
+cd boost_1_71_0/
+./boostrap.sh
+./b2 install
+
+# gflags
+git -c http.proxy=fwdproxy:8080 -c https.proxy=fwdproxy:8080 clone https://github.com/gflags/gflags.git
+cd gflags
+mkdir build && cd build
+cmake ..
+make -j12
+sudo make install
+
+# Install folly
+yum install -y libunwind-devel bzip2-devel double-conversion-devel lz4-devel
+xz-devel snappy-devel
+
+# Install glog
+yum install -y libtool
+git -c http.proxy=fwdproxy:8080 -c https.proxy=fwdproxy:8080 clone https://github.com/google/glog.git
+cd glog/
+git -c http.proxy=fwdproxy:8080 -c https.proxy=fwdproxy:8080 fetch origin --tags
+git -c http.proxy=fwdproxy:8080 -c https.proxy=fwdproxy:8080 checkout tags/v0.4.0
+
+mkdir build && cd build
+cmake ../
+make -j12
+make install
+
+# Install JEMalloc >= 5.2.0
+http_proxy=fwdproxy:8080 https_proxy=fwdproxy:8080 wget https://github.com/jemalloc/jemalloc/releases/download/5.2.1/jemalloc-5.2.1.tar.bz2
+./configure --enable-prof --enable-prof-libunwind
+make -j12
+make install
+
+# Installing Thrift:
+http_proxy=fwdproxy:8080 https_proxy=fwdproxy:8080 wget https://www-us.apache.org/dist/thrift/0.13.0/thrift-0.13.0.tar.gz
+tar -xzvf thrit-0.13.0.tar.gz
+cd thrift-0.13.0
+mkdir cmake-build && cd cmake-build/
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DBUILD_PYTHON=OFF -DBUILD_HASKELL=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TUTORIALS=OFF ../
+ninja -j12
+ninja install
+
+# Building OLDISim w/ PageRank
+mkdir build && cd build/
+HTTP_PROXY=fwdproxy:8080 HTTPS_PROXY=fwdproxy:8080 cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../
+ninja -j12
